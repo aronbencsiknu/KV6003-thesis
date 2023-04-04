@@ -158,4 +158,15 @@ class ExtractFeatures:
         return gradients
 
 class WindowedData:
+    def __init__(self, data, window_size):
+        self.data = data
+        self.window_size = window_size
+        self.windows = self.slice_data_to_windows(data, window_size)
     
+    def slice_data_to_windows(self, data, window_size):
+        windows = []
+        for i in range(0,len(data), window_size):
+            chunk = data[i:i+window_size]
+            windows.append(chunk)
+
+        return windows

@@ -4,9 +4,9 @@ from snntorch import functional
 from snntorch import surrogate
 from snntorch import backprop
 
-from inject_within import ManipulatedDataset
+from construct_dataset import ManipulatedDataset
 from data import LobsterData
-from extract_features import ExtractFeatures
+from construct_dataset import ExtractFeatures
 from model import SNN
 from options import Options
 import torch
