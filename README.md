@@ -1,1 +1,1 @@
-# KV6003-thesis
+# Undergraduate Thesis Practical Work: Detecting Stock Market Manipulation using Deep Spiking Neural Networks
