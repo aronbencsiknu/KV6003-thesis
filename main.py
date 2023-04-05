@@ -16,6 +16,7 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, Dataset
+import matplotlib.pyplot as plt
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--output_decoding", type=str, default="rate", help="rate or latency")
@@ -30,8 +31,10 @@ device = opt.device
 unmanipulated_data = LobsterData()
 manipulated_data = ManipulatedDataset(unmanipulated_data.orderbook_data)
 
-extracted_features = ExtractFeatures(manipulated_data.data)
+#plt.plot(manipulated_data.original_data[0], linestyle = '-')
+#plt.show()
 
+extracted_features = ExtractFeatures(manipulated_data.data)
 input_features = extracted_features.features
 
 labelled_windows = LabelledWindows(input_features, manipulated_data.manipulation_indeces, window_size=10)

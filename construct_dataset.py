@@ -20,7 +20,7 @@ class ManipulatedDataset:
         self.m_len = 5
         self.price_increase = 1.08
         self.volume_increase = 20
-        self.epsilon = 0.5
+        self.epsilon = 0.01
         self.random_num = 0.2
 
         self.original_data = original_data
@@ -32,8 +32,11 @@ class ManipulatedDataset:
         self.manipulated_bid_volume = self.data[3]
 
         self.manipulation_indeces = []
-
-        for i in range(np.shape(self.data)[1]):
+        i = 0
+        counter = np.shape(self.data)[1]
+        while counter > 1:
+            i+=1
+            counter-=1
             if np.random.random() < self.epsilon:
 
                 self.manipulation_indeces.append(i)
@@ -49,32 +52,36 @@ class ManipulatedDataset:
                 
                 # inject manipulation at var:i
                 self.manipulated_ask_price = np.concatenate((self.manipulated_ask_price[:i], manipulated_orderbook[0], self.manipulated_ask_price[i:]))
+                
                 self.manipulated_ask_volume = np.concatenate((self.manipulated_ask_volume[:i], manipulated_orderbook[1], self.manipulated_ask_volume[i:]))
                 self.manipulated_bid_price = np.concatenate((self.manipulated_bid_price[:i], manipulated_orderbook[2], self.manipulated_bid_price[i:]))
                 self.manipulated_bid_volume = np.concatenate((self.manipulated_bid_volume[:i], manipulated_orderbook[3], self.manipulated_bid_volume[i:]))
 
                 i+=self.m_len
+                #print(i)
 
-            a_p = self.manipulated_ask_price
-            a_v = self.manipulated_ask_volume
-            b_p = self.manipulated_bid_price
-            b_v = self.manipulated_bid_volume
+        plt.plot(self.manipulated_ask_price, linestyle = '-')
+        plt.show()
+        a_p = self.manipulated_ask_price
+        a_v = self.manipulated_ask_volume
+        b_p = self.manipulated_bid_price
+        b_v = self.manipulated_bid_volume
 
-            manipulated_data = [a_p, a_v, b_p, b_v]
+        manipulated_data = [a_p, a_v, b_p, b_v]
 
-            for i in range(3):
-                max = manipulated_data[i].max()
-                min = manipulated_data[i].min()
-                for j in range(len(a_p)):
-                    # normalizing values as: value' = (value - min) / (max - min)
-                    manipulated_data[i][j] = (manipulated_data[i][j] - min) / (max - min)
+        """for i in range(3):
+            max = manipulated_data[i].max()
+            min = manipulated_data[i].min()
+            for j in range(len(a_p)):
+                # normalizing values as: value' = (value - min) / (max - min)
+                manipulated_data[i][j] = (manipulated_data[i][j] - min) / (max - min)"""
 
-            """a_p_norm = (-np.min(a_p))/(np.max(a_p)-np.min(a_p)).tolist()
-            a_v_norm = (-np.min(a_v))/(np.max(a_v)-np.min(a_v)).tolist()
-            b_p_norm = (-np.min(b_p))/(np.max(b_p)-np.min(b_p)).tolist()
-            b_v_norm = (-np.min(b_v))/(np.max(b_v)-np.min(b_v)).tolist()"""
+        """a_p_norm = (-np.min(a_p))/(np.max(a_p)-np.min(a_p)).tolist()
+        a_v_norm = (-np.min(a_v))/(np.max(a_v)-np.min(a_v)).tolist()
+        b_p_norm = (-np.min(b_p))/(np.max(b_p)-np.min(b_p)).tolist()
+        b_v_norm = (-np.min(b_v))/(np.max(b_v)-np.min(b_v)).tolist()"""
 
-            self.data = [manipulated_data[0], manipulated_data[1], manipulated_data[2], manipulated_data[3]]
+        self.data = [manipulated_data[0], manipulated_data[1], manipulated_data[2], manipulated_data[3]]
 
     def generate_manipulated_bid_ask_price(self, P0, m_len):
 
