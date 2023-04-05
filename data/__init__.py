@@ -1,6 +1,6 @@
 import csv
 import pathlib
-
+import numpy as np
 
 def create_dataset():
     dataset = LobsterData()
@@ -28,6 +28,8 @@ class LobsterData:
             reader = csv.reader(file)
             for row in reader:
                 self.orderbook_data.append(row)
+
+        self.orderbook_data = np.array(np.transpose(self.orderbook_data), dtype=np.float32)
 
     def __len__(self):
         """Return the number of data in the dataset"""
