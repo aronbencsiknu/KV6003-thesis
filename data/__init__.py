@@ -26,8 +26,12 @@ class LobsterData:
 
         with open(self.orderbook_path, 'r') as file:
             reader = csv.reader(file)
+            limiter = 0
             for row in reader:
-                self.orderbook_data.append(row)
+                if limiter < 4000:
+                    self.orderbook_data.append(row)
+                
+                limiter += 1
 
         self.orderbook_data = np.array(np.transpose(self.orderbook_data), dtype=np.float32)
 

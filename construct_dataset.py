@@ -10,6 +10,7 @@ from snntorch import spikegen
 from snntorch import functional
 from snntorch import surrogate
 from snntorch import backprop
+import numpy as np
 
 
 class ManipulatedDataset:
@@ -19,10 +20,8 @@ class ManipulatedDataset:
         self.m_len = 5
         self.price_increase = 1.08
         self.volume_increase = 20
-        self.epsilon = 0.001
+        self.epsilon = 0.5
         self.random_num = 0.2
-
-        
 
         self.original_data = original_data
         self.data = copy.deepcopy(original_data)
@@ -55,11 +54,27 @@ class ManipulatedDataset:
                 self.manipulated_bid_volume = np.concatenate((self.manipulated_bid_volume[:i], manipulated_orderbook[3], self.manipulated_bid_volume[i:]))
 
                 i+=self.m_len
-            
-            self.data = [self.manipulated_ask_price,
-                         self.manipulated_ask_volume,
-                         self.manipulated_bid_price,
-                         self.manipulated_bid_volume]
+
+            a_p = self.manipulated_ask_price
+            a_v = self.manipulated_ask_volume
+            b_p = self.manipulated_bid_price
+            b_v = self.manipulated_bid_volume
+
+            manipulated_data = [a_p, a_v, b_p, b_v]
+
+            for i in range(3):
+                max = manipulated_data[i].max()
+                min = manipulated_data[i].min()
+                for j in range(len(a_p)):
+                    # normalizing values as: value' = (value - min) / (max - min)
+                    manipulated_data[i][j] = (manipulated_data[i][j] - min) / (max - min)
+
+            """a_p_norm = (-np.min(a_p))/(np.max(a_p)-np.min(a_p)).tolist()
+            a_v_norm = (-np.min(a_v))/(np.max(a_v)-np.min(a_v)).tolist()
+            b_p_norm = (-np.min(b_p))/(np.max(b_p)-np.min(b_p)).tolist()
+            b_v_norm = (-np.min(b_v))/(np.max(b_v)-np.min(b_v)).tolist()"""
+
+            self.data = [manipulated_data[0], manipulated_data[1], manipulated_data[2], manipulated_data[3]]
 
     def generate_manipulated_bid_ask_price(self, P0, m_len):
 
@@ -90,20 +105,6 @@ class ManipulatedDataset:
         manipulated_ask_volume = self.generate_manipulated_bid_ask_volume(ask_V0, m_len)
 
         return [manipulated_bid_price, manipulated_bid_volume, manipulated_ask_price, manipulated_ask_volume]
-
-
-    """def plot(ypoints, data_index):
-        fig, axs = plt.subplots(nrows=len(ypoints), ncols=1, figsize=(8, len(ypoints) * 3))
-        if len(ypoints) > 1:
-            for i in range(len(ypoints)):
-                if i % 2 == 0:
-                    axs[i].plot(ypoints[i], 'g-')
-                else:
-                    axs[i].plot(ypoints[i], 'r-')
-        else:
-            axs.plot(ypoints[0])
-
-        plt.show()"""
 
 class ExtractFeatures:
     def __init__(self, data):
@@ -145,15 +146,6 @@ class ExtractFeatures:
         self.features = [self.bid_P, self.ask_P, self.bid_V, self.ask_V, self.bid_P_der, self.ask_P_der, self.bid_V_der, self.ask_V_der, self.bid_P_der_hf, self.ask_P_der_hf, self.bid_V_der_hf, self.ask_V_der_hf, self.bid_P_hf, self.ask_P_hf, self.bid_V_hf, self.ask_V_hf]
 
 
-    """def slice_data_to_windows(self, data, window_size):
-        windows = []
-        for i in range(0,len(data), window_size):
-            chunk = data[i:i+window_size]
-            windows.append(chunk)
-
-        return windows"""
-
-
     def extract_high_frequencies(self, data):
         # Apply DWT transform to the time-series data
         cA, cD = pywt.dwt(data, 'db2')
@@ -177,7 +169,6 @@ class ExtractFeatures:
     def take_derivative(self, data):
 
         gradients = []
-
         for i in range(len(data)-1):
             gradients.append((data[i-1] - data[i+1])/2)
 
@@ -210,7 +201,9 @@ class LabelledWindows:
             if np.shape(window)[1] == window_size:
                 windows.append(window)
 
+        
         windows = np.transpose(windows, (0,2,1))
+        print("Shape of windows: ", np.shape(windows))
         return windows
     
 class SpikingDataset(Dataset):

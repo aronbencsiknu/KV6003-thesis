@@ -27,7 +27,6 @@ input_encoding = parsed_args.input_encoding
 opt = Options()
 device = opt.device
 
-
 unmanipulated_data = LobsterData()
 manipulated_data = ManipulatedDataset(unmanipulated_data.orderbook_data)
 
@@ -35,12 +34,8 @@ extracted_features = ExtractFeatures(manipulated_data.data)
 
 input_features = extracted_features.features
 
-#print("Input features shape: ", np.shape(input_features))
-
-labelled_windows = LabelledWindows(input_features, manipulated_data.manipulation_indeces, window_size=20)
+labelled_windows = LabelledWindows(input_features, manipulated_data.manipulation_indeces, window_size=10)
 X = labelled_windows.windows
-scaler = MinMaxScaler()
-#X = scaler.fit_transform(X)
 
 y = labelled_windows.labels
 
@@ -65,18 +60,18 @@ elif output_decoding=="latency":
 else:
   raise Exception("Only rate and latency encodings allowed") 
 
-model = SNN(input_size=input_size, hidden_size=opt.hidden_size, output_size=2).to(opt.device)
+model = SNN(input_size=input_size, hidden_size=opt.hidden_size, output_size=2).to(device)
 
-optimizer = torch.optim.Adam(model.parameters(), lr=opt.learning_rate, betas=(0.9, 0.999))
+optimizer = torch.optim.AdamW(model.parameters(), lr=opt.learning_rate, betas=(0.9, 0.999))
 
-"""def train(model,train_loader,optimizer,epoch):
+def train(model,train_loader,optimizer,epoch):
   model.train()
   loss_val=0
   for batch_idx, (data, target) in enumerate(train_loader):
       data=data.to(device)
       target=target.to(device)
 
-      spk_rec, mem_rec = model(data,time_first=False)
+      spk_rec, mem_rec = model(data, opt.num_steps)
       loss = loss_fn(spk_rec,target)
       optimizer.zero_grad()
       loss.backward()
@@ -88,7 +83,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=opt.learning_rate, betas=(0.
   print("Train loss:\t%.2f" % loss_val)
   return model
 
-def test(model,test_loader,decoding,index):
+def test(model,test_loader,decoding):
   model.eval()
   test_loss = 0
   acc = 0
@@ -96,7 +91,7 @@ def test(model,test_loader,decoding,index):
       for data, target in test_loader:
           data=data.to(device)
           target=target.to(device)
-          spk_rec, _ = model(data, time_first=False)
+          spk_rec, _ = model(data, opt.num_steps)
           if decoding=="rate":
             acc_val = functional.acc.accuracy_rate(spk_rec,target)
           elif decoding=="latency":
@@ -104,16 +99,13 @@ def test(model,test_loader,decoding,index):
           test_loss_current = loss_fn(spk_rec,target).item()
           test_loss+=test_loss_current
           acc+=acc_val
-          
-          index+=1
 
   test_loss /= len(test_loader)
   acc /= len(test_loader)
 
-  print("Test loss:\t%.2f" % test_loss)
-  print("Test acc:\t%.2f" % acc,"\n")
-
-  return index
+  print("Test loss:\t%.4f" % test_loss)
+  print("Test acc:\t%.4f" % acc,"\n")
 
 for epoch in range(1, opt.num_epochs+1):
-  model=train(model,train_loader,optimizer,epoch)"""
+  model=train(model,train_loader,optimizer,epoch)
+  test(model, test_loader, output_decoding)
