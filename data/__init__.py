@@ -28,12 +28,14 @@ class LobsterData:
             reader = csv.reader(file)
             limiter = 0
             for row in reader:
-                if limiter < 4000:
-                    self.orderbook_data.append(row)
+                """if limiter < 60000:
+                    self.orderbook_data.append(row)"""
+                self.orderbook_data.append(row)
                 
                 limiter += 1
 
         self.orderbook_data = np.array(np.transpose(self.orderbook_data), dtype=np.float32)
+        
 
     def __len__(self):
         """Return the number of data in the dataset"""

@@ -18,10 +18,9 @@ class ManipulatedDataset:
 
         # manipulation characteristics
         self.m_len = 5
-        self.price_increase = 1.08
-        self.volume_increase = 20
-        self.epsilon = 0.01
-        self.random_num = 0.2
+        self.price_increase = 1.02
+        self.volume_increase = 5
+        self.epsilon = 0.02
 
         self.original_data = original_data
         self.data = copy.deepcopy(original_data)
@@ -48,11 +47,10 @@ class ManipulatedDataset:
                 bid_V0 = self.manipulated_bid_volume[i]
 
                 # generate manipulated orderbook data instance
-                manipulated_orderbook = self.generate_manipulated_instance(bid_P0, ask_P0, bid_V0, ask_V0, self.m_len)
+                manipulated_orderbook = self.generate_manipulated_instance(ask_P0, ask_V0, bid_P0, bid_V0, self.m_len)
                 
                 # inject manipulation at var:i
                 self.manipulated_ask_price = np.concatenate((self.manipulated_ask_price[:i], manipulated_orderbook[0], self.manipulated_ask_price[i:]))
-                
                 self.manipulated_ask_volume = np.concatenate((self.manipulated_ask_volume[:i], manipulated_orderbook[1], self.manipulated_ask_volume[i:]))
                 self.manipulated_bid_price = np.concatenate((self.manipulated_bid_price[:i], manipulated_orderbook[2], self.manipulated_bid_price[i:]))
                 self.manipulated_bid_volume = np.concatenate((self.manipulated_bid_volume[:i], manipulated_orderbook[3], self.manipulated_bid_volume[i:]))
@@ -60,28 +58,12 @@ class ManipulatedDataset:
                 i+=self.m_len
                 #print(i)
 
-        plt.plot(self.manipulated_ask_price, linestyle = '-')
-        plt.show()
         a_p = self.manipulated_ask_price
         a_v = self.manipulated_ask_volume
         b_p = self.manipulated_bid_price
         b_v = self.manipulated_bid_volume
 
-        manipulated_data = [a_p, a_v, b_p, b_v]
-
-        """for i in range(3):
-            max = manipulated_data[i].max()
-            min = manipulated_data[i].min()
-            for j in range(len(a_p)):
-                # normalizing values as: value' = (value - min) / (max - min)
-                manipulated_data[i][j] = (manipulated_data[i][j] - min) / (max - min)"""
-
-        """a_p_norm = (-np.min(a_p))/(np.max(a_p)-np.min(a_p)).tolist()
-        a_v_norm = (-np.min(a_v))/(np.max(a_v)-np.min(a_v)).tolist()
-        b_p_norm = (-np.min(b_p))/(np.max(b_p)-np.min(b_p)).tolist()
-        b_v_norm = (-np.min(b_v))/(np.max(b_v)-np.min(b_v)).tolist()"""
-
-        self.data = [manipulated_data[0], manipulated_data[1], manipulated_data[2], manipulated_data[3]]
+        self.data = [a_p, a_v, b_p, b_v]
 
     def generate_manipulated_bid_ask_price(self, P0, m_len):
 
@@ -103,7 +85,7 @@ class ManipulatedDataset:
         return np.concatenate((pumping_array, dumping_array))
 
 
-    def generate_manipulated_instance(self, bid_P0, ask_P0, bid_V0, ask_V0, m_len,):
+    def generate_manipulated_instance(self, ask_P0, ask_V0, bid_P0, bid_V0, m_len):
 
         manipulated_bid_price = self.generate_manipulated_bid_ask_price(bid_P0, m_len)
         manipulated_ask_price = self.generate_manipulated_bid_ask_price(ask_P0, m_len)
@@ -111,47 +93,56 @@ class ManipulatedDataset:
         manipulated_bid_volume = self.generate_manipulated_bid_ask_volume(bid_V0, m_len)
         manipulated_ask_volume = self.generate_manipulated_bid_ask_volume(ask_V0, m_len)
 
-        return [manipulated_bid_price, manipulated_bid_volume, manipulated_ask_price, manipulated_ask_volume]
+        return [manipulated_ask_price, manipulated_ask_volume, manipulated_bid_price, manipulated_bid_volume]
 
 class ExtractFeatures:
     def __init__(self, data):
-        print("\nExtracting features...")
-        self.original_data = data
-        self.original_bid_price = data[0]
-        self.original_ask_price = data[1]
-        self.original_bid_volume = data[1]
-        self.original_ask_volume = data[1]
+        self.original_data = copy.deepcopy(data)
+        self.original_ask_price = self.original_data[0]
+        self.original_ask_volume = self.original_data[1]
+        self.original_bid_price = self.original_data[2]
+        self.original_bid_volume = self.original_data[3]
+        self.features = []
 
         # P_t and V_t
-        self.bid_P = self.original_bid_price
-        self.ask_P = self.original_ask_price
-        
-        self.bid_V = self.original_bid_volume
-        self.ask_V = self.original_ask_volume
+        #self.features.append(self.original_bid_price)
+        self.features.append(self.original_ask_price)
+        #self.features.append(self.original_bid_volume)
+        #self.features.append(self.original_ask_volume)
 
         # dPt/d_t and dV_t/d_t
-        self.bid_P_der = self.take_derivative(self.original_bid_price)
-        self.ask_P_der = self.take_derivative(self.original_ask_price)
+        self.features.append(self.take_derivative(self.original_bid_price))
+        #self.features.append(self.take_derivative(self.original_ask_price))
 
-        self.bid_V_der = self.take_derivative(self.original_bid_volume)
-        self.ask_V_der = self.take_derivative(self.original_ask_volume)
+        """self.features.append(self.take_derivative(self.original_bid_volume))
+        self.features.append(self.take_derivative(self.original_ask_volume))
 
         # dPhat_t/d_t and dVhat_t/d_t
-        self.bid_P_der_hf = self.take_derivative(self.extract_high_frequencies(self.original_bid_price))
-        self.ask_P_der_hf = self.take_derivative(self.extract_high_frequencies(self.original_ask_price))
+        self.features.append(self.take_derivative(self.extract_high_frequencies(self.original_bid_price)))
+        self.features.append(self.take_derivative(self.extract_high_frequencies(self.original_ask_price)))
 
-        self.bid_V_der_hf = self.take_derivative(self.extract_high_frequencies(self.original_bid_volume))
-        self.ask_V_der_hf = self.take_derivative(self.extract_high_frequencies(self.original_ask_volume))
+        self.features.append(self.take_derivative(self.extract_high_frequencies(self.original_bid_volume)))
+        self.features.append(self.take_derivative(self.extract_high_frequencies(self.original_ask_volume)))
 
         # Phat and Vhat
-        self.bid_P_hf = self.extract_high_frequencies(self.original_bid_price)
-        self.ask_P_hf = self.extract_high_frequencies(self.original_ask_price)
+        self.features.append(self.extract_high_frequencies(self.original_bid_price))
+        self.features.append(self.extract_high_frequencies(self.original_ask_price))
 
-        self.bid_V_hf = self.extract_high_frequencies(self.original_bid_volume)
-        self.ask_V_hf = self.extract_high_frequencies(self.original_ask_volume)
+        self.features.append(self.extract_high_frequencies(self.original_bid_volume))
+        self.features.append(self.extract_high_frequencies(self.original_ask_volume))"""
 
-        self.features = [self.bid_P, self.ask_P, self.bid_V, self.ask_V, self.bid_P_der, self.ask_P_der, self.bid_V_der, self.ask_V_der, self.bid_P_der_hf, self.ask_P_der_hf, self.bid_V_der_hf, self.ask_V_der_hf, self.bid_P_hf, self.ask_P_hf, self.bid_V_hf, self.ask_V_hf]
-
+        min = len(self.features[0])
+        for i in range(len(self.features)):
+            if len(self.features[i]) < min:
+                min = len(self.features[i])
+        for i in range(len(self.features)):
+            self.features[i] = self.features[i][:min]
+        for i in range(len(self.features)):
+            max = np.asarray(self.features[i]).max()
+            min = np.asarray(self.features[i]).min()
+            for j in range(len(self.features[i])):
+                # normalizing values as: value' = (value - min) / (max - min)
+                self.features[i][j] = (self.features[i][j] - min) / (max - min)
 
     def extract_high_frequencies(self, data):
         # Apply DWT transform to the time-series data
@@ -177,64 +168,68 @@ class ExtractFeatures:
 
         gradients = []
         for i in range(len(data)-1):
-            gradients.append((data[i-1] - data[i+1])/2)
+            gradients.append((data[i+1] - data[i-1])/2)
 
         gradients.append(gradients[-1])
         return gradients
 
 class LabelledWindows:
     def __init__(self, data, manipulation_indices, window_size):
-        print("\nLabelling windows...")
         self.manipulation_indices = manipulation_indices
         self.windows = self.slice_data_to_windows(data, window_size)
         self.labels = []
-
+        index = 0
         for i in range(np.shape(self.windows)[0]):
-            if i in self.manipulation_indices:
+            in_range = False
+            for j in range(len(manipulation_indices)):
+                if index+5 < manipulation_indices[j] and manipulation_indices[j] < index+window_size-5:
+                    in_range = True
+                    break
+            if in_range:
                 self.labels.append(1)
             else:
                 self.labels.append(0)
 
+            index+=window_size
+
     def slice_data_to_windows(self, data, window_size):
         windows = []
-        for i in range(0, np.shape(data)[1], window_size):
+        for i in range(0, len(data)):
             window = []
-            for j in range(0, np.shape(data)[0]):
-                #print("j: ",j)
-                chunk = data[j][i : i+window_size]
-                window.append(chunk)
-                #if len(chunk) == window_size:
-                #    window.append(chunk)
-            if np.shape(window)[1] == window_size:
-                windows.append(window)
-
-        
-        windows = np.transpose(windows, (0,2,1))
-        print("Shape of windows: ", np.shape(windows))
+            for j in range(0, len(data[0]), window_size):
+                if j + window_size < len(data[0]):
+                    chunk = data[i][j : j+window_size]
+                    window.append(chunk)
+            
+            windows.append(window)
+            
+        windows = np.transpose(np.asarray(windows), (1,2,0))
         return windows
     
 class SpikingDataset(Dataset):
     def __init__(self, data, targets, num_steps, encoding="rate"):
-      print("\nCreating SpikingDataset...")
-      self.data=data.copy()
-      self.targets=targets.copy()
-      self.encoding=encoding
-      self.db=[]
+        self.data=data.copy()
+        self.targets=targets.copy()
+        self.encoding=encoding
+        self.db=[]
+        self.n_classes = 2
 
-      self.data = torch.FloatTensor(self.data)
-      self.targets = torch.LongTensor(self.targets)
+        for i in range(np.shape(self.data)[0]):
+            item = torch.FloatTensor(self.data[i])
+            item=torch.flatten(item)
 
-      for i in range(len(self.data)):
-        item=torch.flatten(self.data[i])
-        if self.encoding=="rate":
-          item = spikegen.rate(item,num_steps=num_steps)
-        elif self.encoding=="latency":
-          item = spikegen.latency(item,num_steps=num_steps,normalize=True, linear=True)
-        else:
-          raise Exception("Only rate and latency encodings allowed") 
+            if self.encoding=="rate":
+                item = spikegen.rate(item,num_steps=num_steps)
+            elif self.encoding=="latency":
+                item = spikegen.latency(item,num_steps=num_steps,normalize=True, linear=True)
+            else:
+                raise Exception("Only rate and latency encodings allowed") 
 
-        target=self.targets[i]
-        self.db.append([item,target])
+            target=self.targets[i]
+            #print("TARGET:",target)
+            self.db.append([item,target])
+        
+        self.n_samples_per_class = self.get_class_counts()
 
     def __len__(self):
         return len(self.db)
@@ -243,3 +238,68 @@ class SpikingDataset(Dataset):
         data = self.db[idx][0]
         label = self.db[idx][1]
         return data, label
+    
+    def get_class_counts(self):
+        class_weights = [0] * 2
+        for i in range(len(self.targets)):
+            class_weights[self.targets[i]] += 1
+
+        return class_weights
+    
+    def weights4balance(self):
+        """
+        :return: The class blanace weights for training
+        """
+        print("\nClass weight balancing for training.")
+
+
+        w = [len(self.db) / (self.n_classes * n_curr_class) for n_curr_class in self.n_samples_per_class]
+        for i, j in zip(w, [0, 1]):
+            print(f"{j}\t-> {i}")
+
+        return torch.tensor(w, dtype=torch.float32)
+    
+class NonSpikingDataset(Dataset):
+    def __init__(self, data, targets):
+        self.data=data.copy()
+        self.targets=targets.copy()
+        self.db=[]
+        self.n_classes = 2
+
+        for i in range(np.shape(self.data)[0]):
+            item = torch.permute(torch.FloatTensor(self.data[i]),(1,0))
+
+            target=self.targets[i]
+            #print("TARGET:",target)
+            self.db.append([item,target])
+        
+        self.n_samples_per_class = self.get_class_counts()
+        print(self.n_samples_per_class)
+
+    def __len__(self):
+        return len(self.db)
+
+    def __getitem__(self, idx):
+        data = self.db[idx][0]
+        label = self.db[idx][1]
+        return data, label
+    
+    def get_class_counts(self):
+        class_weights = [0] * 2
+        for i in range(len(self.targets)):
+            class_weights[self.targets[i]] += 1
+
+        return class_weights
+    
+    def weights4balance(self):
+        """
+        :return: The class blanace weights for training
+        """
+        print("\nClass weight balancing for training.")
+
+
+        w = [len(self.db) / (self.n_classes * n_curr_class) for n_curr_class in self.n_samples_per_class]
+        for i, j in zip(w, [0, 1]):
+            print(f"{j}\t-> {i}")
+
+        return torch.tensor(w, dtype=torch.float32)

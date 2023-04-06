@@ -59,56 +59,37 @@ class SNN(nn.Module):
                     spk_rec.append(spk.clone())
             
         return torch.stack(spk_rec, dim=0), torch.stack(mem_rec, dim=0)
-    
 
-class SNN_original(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, beta=0.5):
-        super().__init__()
-
-        # Initialize layers
-        self.spike_grad = surrogate.fast_sigmoid(slope=25)
-        self.fc1 = nn.Linear(input_size, 20, bias=False)
-        self.lif1 = snn.Leaky(beta=beta, spike_grad=self.spike_grad, threshold=0.1, learn_threshold=True)
-        self.fc2 = nn.Linear(20, 20, bias=False)
-        self.lif2 = snn.Leaky(beta=beta, spike_grad=self.spike_grad, threshold=0.1, learn_threshold=True)
-        self.fc3 = nn.Linear(20, output_size, bias=False)
-        self.lif3 = snn.Leaky(beta=beta, spike_grad=self.spike_grad, threshold=0.1, learn_threshold=True)
-
-        self.dropout = nn.Dropout(p=0.5)
+class CNN(nn.Module):
+    def __init__(self):
+        super(CNN, self).__init__()
+        self.conv1 = nn.Conv1d(in_channels=2, out_channels=16, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, padding=1)
+        self.maxpool = nn.MaxPool1d(3, stride=2)
+        self.adaptive_pool = nn.AdaptiveAvgPool1d(8)
+        self.conv3 = nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3, padding=1)
+        self.fc1 = nn.Linear(512, 256)
+        self.fc2 = nn.Linear(256, 2)
+        self.lsm = nn.LogSoftmax(dim=1)
+        self.dropout = nn.Dropout(p=0.3)
         
-
-        #self.batch_norm = snn.BatchNorm1d()
-
-    def forward(self, x, num_steps, time_first=True, plot=False):
-
-        if not time_first:
-          x=x.transpose(1, 0)
-
-        # Initialize hidden states at t=0
-        mem1 = self.lif1.init_leaky()
-        mem2 = self.lif2.init_leaky()
-        mem3 = self.lif3.init_leaky()
+    def forward(self, x):
         
-        # Record the final layer
-        spk1_rec = []
-        spk2_rec = []
-        spk3_rec = []
-        mem3_rec = []
+        #x = x.unsqueeze(1)
+        x = torch.relu(self.conv1(x))
 
-        # inference through time steps
-        for step in range(num_steps):
-            cur1 = self.fc1(x[step])
-            spk1, mem1 = self.lif1(cur1, mem1)
-            spk1_rec.append(spk1)
+        x = self.maxpool(x)
 
-            cur2 = self.fc2(spk1)
-            cur2 = self.dropout(cur2)
-            spk2, mem2 = self.lif2(cur2, mem2)
-            spk2_rec.append(spk2)
+        x = torch.relu(self.conv2(x))
 
-            cur3 = self.fc3(spk2)
-            spk3, mem3 = self.lif3(cur3, mem3)
-            spk3_rec.append(spk3)
-            mem3_rec.append(mem3)
-
-        return torch.stack(spk3_rec, dim=0), torch.stack(mem3_rec, dim=0)
+        x = self.maxpool(x)
+        x = torch.relu(self.conv3(x))
+        #x = self.maxpool(x)
+        x = self.adaptive_pool(x)
+        x = torch.flatten(x, start_dim=1)
+        x = torch.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = self.fc2(x)
+        x = self.dropout(x)
+        x = self.lsm(x)
+        return x
