@@ -44,5 +44,16 @@ class RasterPlot(object):
         ax = fig.gca()
         ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
+class ManipulationPlot(object):
+    def __init__(self, manipulated_data):
+        fig, axs = plt.subplots(2, 2, figsize=(10, 5))
+        plot_range = [0, 1400]
+        for y in range(2):
+            for z in range(2):
+                for i in range(plot_range[0], plot_range[1]):
+                    if i in manipulated_data.manipulation_indeces:
+                        axs[y][z].axvline(x = i, color = 'r', label = 'axvline - full height', linestyle='dotted', linewidth=0.5)
+                    axs[y][z].plot(manipulated_data.data[y+z][plot_range[0]:plot_range[1]], color='b', linewidth=1)
 
+        plt.show()
 

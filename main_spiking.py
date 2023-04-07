@@ -6,7 +6,7 @@ from construct_dataset import LabelledWindows
 from construct_dataset import SpikingDataset
 from model import SNN
 from options import Options
-from plot_spike_trains import RasterPlot
+from plot_spike_trains import RasterPlot, ManipulationPlot
 
 # external imports
 from snntorch import functional
@@ -31,23 +31,12 @@ device = opt.device
 unmanipulated_data = LobsterData()
 manipulated_data = ManipulatedDataset(unmanipulated_data.orderbook_data)
 
+#ManipulationPlot(manipulated_data)
+
 extracted_features = ExtractFeatures(manipulated_data.data)
 input_features = extracted_features.features
 
-fig, axs = plt.subplots(2, 2, figsize=(10, 5))
-plot_range = [0, 500]
-for y in range(2):
-  for z in range(2):
-    for i in range(plot_range[0], plot_range[1]):
-      if i in manipulated_data.manipulation_indeces:
-        axs[y][z].axvline(x = i, color = 'r', label = 'axvline - full height', linestyle='dotted', linewidth=0.5)
-    axs[y][z].plot(manipulated_data.data[y+z][plot_range[0]:plot_range[1]], color='b', linewidth=1)
-  #axs[i].ticklabel_format(style='plain')s
-  
-
-plt.show()
-
-labelled_windows = LabelledWindows(input_features, manipulated_data.manipulation_indeces, window_size=30)
+labelled_windows = LabelledWindows(input_features, manipulated_data.manipulation_indeces, window_size=40)
 X = labelled_windows.windows
 y = labelled_windows.labels
 
@@ -96,8 +85,10 @@ def train(model,train_loader,optimizer,epoch):
       loss_val+=loss.item()
 
   loss_val /= len(train_loader)
+  print("\n--------------------------------------")
   print("Epoch:\t\t",epoch)
   print("Train loss:\t%.2f" % loss_val)
+  
   return model
 
 def test(model,test_loader,decoding):

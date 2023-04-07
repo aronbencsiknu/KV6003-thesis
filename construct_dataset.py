@@ -1,15 +1,10 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import copy
 import pywt
 import torch
-from torch.utils.data import DataLoader, Dataset
-import snntorch as snn
-from snntorch import spikeplot as splt
+from torch.utils.data import Dataset
+from snntorch import spikeplot
 from snntorch import spikegen
-from snntorch import functional
-from snntorch import surrogate
-from snntorch import backprop
 import numpy as np
 
 
@@ -17,10 +12,10 @@ class ManipulatedDataset:
     def __init__(self, original_data):
 
         # manipulation characteristics
-        self.m_len = 5
-        self.price_increase = 1.08
-        self.volume_increase = 4
-        self.epsilon = 0.03
+        self.m_len = 10
+        self.price_increase = 30 #bps
+        self.volume_increase = 5 #times
+        self.epsilon = 0.03 # probability of manipulation
 
         self.original_data = original_data
         self.data = copy.deepcopy(original_data)
@@ -69,8 +64,8 @@ class ManipulatedDataset:
 
         pump_len = int(m_len/3)
         dump_len = m_len - pump_len
-        pumping_array = np.linspace(P0, P0 * self.price_increase, pump_len)
-        dumping_array = np.linspace(P0 * self.price_increase, P0, dump_len)
+        pumping_array = np.linspace(P0, P0 * (1 + self.price_increase/10000), pump_len)
+        dumping_array = np.linspace(P0 * (1 + self.price_increase/10000), P0, dump_len)
 
         return np.concatenate((pumping_array, dumping_array))
 
@@ -105,19 +100,19 @@ class ExtractFeatures:
         self.features = []
 
         # P_t and V_t
-        #self.features.append(self.original_bid_price)
-        self.features.append(self.original_ask_price)
-        #self.features.append(self.original_bid_volume)
+        self.features.append(self.original_bid_price)
+        #self.features.append(self.original_ask_price)
+        self.features.append(self.original_bid_volume)
         #self.features.append(self.original_ask_volume)
 
         # dPt/d_t and dV_t/d_t
         self.features.append(self.take_derivative(self.original_bid_price))
         #self.features.append(self.take_derivative(self.original_ask_price))
 
-        """self.features.append(self.take_derivative(self.original_bid_volume))
-        self.features.append(self.take_derivative(self.original_ask_volume))
+        self.features.append(self.take_derivative(self.original_bid_volume))
+        #self.features.append(self.take_derivative(self.original_ask_volume))
 
-        # dPhat_t/d_t and dVhat_t/d_t
+        """# dPhat_t/d_t and dVhat_t/d_t
         self.features.append(self.take_derivative(self.extract_high_frequencies(self.original_bid_price)))
         self.features.append(self.take_derivative(self.extract_high_frequencies(self.original_ask_price)))
 
@@ -181,10 +176,12 @@ class LabelledWindows:
         index = 0
         for i in range(np.shape(self.windows)[0]):
             in_range = False
+
             for j in range(len(manipulation_indices)):
                 if index+5 < manipulation_indices[j] and manipulation_indices[j] < index+window_size-5:
                     in_range = True
                     break
+
             if in_range:
                 self.labels.append(1)
             else:
@@ -193,10 +190,17 @@ class LabelledWindows:
             index+=window_size
 
     def slice_data_to_windows(self, data, window_size):
+        """
+        Slices the data into windows of size window_size
+        
+        Parameters:
+            data (np.array): The data to be sliced
+            window_size (int): The size of the window"""
+        
         windows = []
-        for i in range(0, len(data)):
+        for i in range(0, len(data)): # for each feature
             window = []
-            for j in range(0, len(data[0]), window_size):
+            for j in range(0, len(data[0]), int(window_size)): # for each window 
                 if j + window_size < len(data[0]):
                     chunk = data[i][j : j+window_size]
                     window.append(chunk)

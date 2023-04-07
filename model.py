@@ -12,7 +12,7 @@ import numpy as np
 # Define Network
 
 class SNN(nn.Module):
-    def __init__(self, input_size, hidden_size, output_size, beta=0.5, alpha=0.5, spike_grad=surrogate.fast_sigmoid(slope=25), neuron_type="Leaky"):
+    def __init__(self, input_size, hidden_size, output_size, beta=0.5, alpha=0.5, spike_grad=surrogate.fast_sigmoid(slope=25), neuron_type="Synaptic"):
         super().__init__()
 
         self.neuron_type = neuron_type
@@ -23,28 +23,28 @@ class SNN(nn.Module):
 
         self.synapses.append(nn.Linear(input_size, hidden_size[0], bias=False))
 
-        if neuron_type == "Leaky":
-            self.neurons.append(snn.Leaky(beta=beta, spike_grad=spike_grad, threshold=0.1, learn_threshold=True))
+        if self.neuron_type == "Leaky":
+            self.neurons.append(snn.Leaky(beta=beta, spike_grad=spike_grad))
 
-        elif neuron_type == "Synaptic":
+        elif self.neuron_type == "Synaptic":
             self.neurons.append(snn.Synaptic(alpha=alpha, beta=beta, threshold=0.1, spike_grad=spike_grad, learn_threshold=True))
         
         for i in range(len(hidden_size) - 1):
             self.synapses.append(nn.Linear(hidden_size[i], hidden_size[i + 1], bias=False))
-            if neuron_type == "Leaky":
-                self.neurons.append(snn.Leaky(beta=beta, spike_grad=spike_grad, threshold=0.1, learn_threshold=True))
+            if self.neuron_type == "Leaky":
+                self.neurons.append(snn.Leaky(beta=beta, spike_grad=spike_grad))
 
-            elif neuron_type == "Synaptic":
+            elif self.neuron_type == "Synaptic":
                 self.neurons.append(snn.Synaptic(alpha=alpha, beta=beta, threshold=0.1, spike_grad=spike_grad, learn_threshold=True))
 
         self.synapses.append(nn.Linear(hidden_size[-1], output_size, bias=False))
-        if neuron_type == "Leaky":
-            self.neurons.append(snn.Leaky(beta=beta, spike_grad=spike_grad, threshold=0.1, learn_threshold=True))
+        if self.neuron_type == "Leaky":
+            self.neurons.append(snn.Leaky(beta=beta, spike_grad=spike_grad))
 
-        elif neuron_type == "Synaptic":
+        elif self.neuron_type == "Synaptic":
             self.neurons.append(snn.Synaptic(alpha=alpha, beta=beta, threshold=0.1, spike_grad=spike_grad, learn_threshold=True))
 
-        self.dropout = nn.Dropout(p=0.5)
+        self.dropout = nn.Dropout(p=0.2)
         self.num_hidden = len(hidden_size)
 
     def forward(self, x, num_steps, time_first=False):
@@ -81,7 +81,7 @@ class SNN(nn.Module):
                 if self.neuron_type == "Leaky":
                     spk, membranes[i] = self.neurons[i](spk, membranes[i])
                 
-                elif self.add_moduleneuron_type == "Synaptic":
+                elif self.neuron_type == "Synaptic":
                     spk, syns[i], membranes[i] = self.neurons[i](spk, syns[i], membranes[i])
 
                 # record output layer membrane potentials and spikes
