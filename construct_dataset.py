@@ -18,9 +18,9 @@ class ManipulatedDataset:
 
         # manipulation characteristics
         self.m_len = 5
-        self.price_increase = 1.02
-        self.volume_increase = 5
-        self.epsilon = 0.02
+        self.price_increase = 1.08
+        self.volume_increase = 4
+        self.epsilon = 0.03
 
         self.original_data = original_data
         self.data = copy.deepcopy(original_data)

@@ -1,24 +1,22 @@
-from snntorch import spikeplot as splt
-from snntorch import spikegen
-from snntorch import functional
-from snntorch import surrogate
-
+# local imports
 from data import LobsterData
 from construct_dataset import ManipulatedDataset
 from construct_dataset import ExtractFeatures
 from construct_dataset import LabelledWindows
 from construct_dataset import SpikingDataset
-from loss import mse_count_loss
 from model import SNN
 from options import Options
+from plot_spike_trains import RasterPlot
+
+# external imports
+from snntorch import functional
 import torch
 import argparse
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay 
+from sklearn.metrics import confusion_matrix 
 
 argparser = argparse.ArgumentParser()
 argparser.add_argument("--output_decoding", type=str, default="rate", help="rate or latency")
@@ -37,14 +35,14 @@ extracted_features = ExtractFeatures(manipulated_data.data)
 input_features = extracted_features.features
 
 fig, axs = plt.subplots(2, 2, figsize=(10, 5))
+plot_range = [0, 500]
 for y in range(2):
   for z in range(2):
-    for i in range(500):
+    for i in range(plot_range[0], plot_range[1]):
       if i in manipulated_data.manipulation_indeces:
         axs[y][z].axvline(x = i, color = 'r', label = 'axvline - full height', linestyle='dotted', linewidth=0.5)
-    axs[y][z].plot(manipulated_data.data[y+z][:500], color='b', linewidth=1)
-  #axs[i].ticklabel_format(style='plain')
-  #axs[i].set_ylim(bottom=0)
+    axs[y][z].plot(manipulated_data.data[y+z][plot_range[0]:plot_range[1]], color='b', linewidth=1)
+  #axs[i].ticklabel_format(style='plain')s
   
 
 plt.show()
@@ -71,7 +69,7 @@ for batch_idx, (data, target) in enumerate(train_loader):
 
 if output_decoding=="rate":
   #loss_fn = mse_count_loss(correct_rate=1, incorrect_rate=0.1)
-  loss_fn = functional.loss.mse_count_loss(correct_rate=1, incorrect_rate=0.1)
+  loss_fn = functional.loss.mse_count_loss(correct_rate=1, incorrect_rate=0.2)
 elif output_decoding=="latency":
   loss_fn = functional.loss.mse_temporal_loss(target_is_time=False, on_target=0, off_target=opt.num_steps, tolerance=5, multi_spike=False)
 else:
@@ -88,8 +86,9 @@ def train(model,train_loader,optimizer,epoch):
       data=data.to(device)
       target=target.to(device)
 
-      spk_rec, mem_rec = model(data, opt.num_steps)
-      #loss = loss_fn(spk_rec,target, class_weights=train_set.get_class_weights())
+      spk_recs, _ = model(data, opt.num_steps)
+      spk_rec = spk_recs[-1]
+
       loss = loss_fn(spk_rec,target)
       optimizer.zero_grad()
       loss.backward()
@@ -111,16 +110,17 @@ def test(model,test_loader,decoding):
 
   label_names = ["No manipulation", "Manipulation"]
 
-
   with torch.no_grad():
       for data, target in test_loader:
           data=data.to(device)
           target=target.to(device)
-          spk_rec, _ = model(data, opt.num_steps)
+          spk_recs, _ = model(data, opt.num_steps)
+          spk_rec = spk_recs[-1] # get spikes from last layer
           if decoding=="rate":
             acc_val = functional.acc.accuracy_rate(spk_rec,target)
           elif decoding=="latency":
             acc_val = functional.acc.accuracy_temporal(spk_rec,target)
+
           test_loss_current = loss_fn(spk_rec,target).item()
           test_loss+=test_loss_current
           acc+=acc_val
@@ -160,3 +160,5 @@ for epoch in range(1, opt.num_epochs+1):
   model=train(model,train_loader,optimizer,epoch)
 
 test(model, test_loader, output_decoding)
+with torch.no_grad():
+  test = RasterPlot(model, test_loader, opt.num_steps, device)
