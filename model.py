@@ -123,8 +123,76 @@ class CNN(nn.Module):
         x = torch.relu(self.fc1(x))
         x = self.dropout(x)
         x = self.fc2(x)
-
-        x = self.dropout(x)
         x = self.lsm(x)
 
         return x
+    
+class CSNN(nn.Module):
+    def __init__(self, batch_size, beta=0.5, spike_grad=surrogate.fast_sigmoid(slope=25)):
+        super(CSNN, self).__init__()
+
+        self.batch_size = batch_size
+
+        self.conv1 = nn.Conv1d(in_channels=2, out_channels=16, kernel_size=3, padding=1)
+        self.lif1 = snn.Leaky(beta=beta, spike_grad=spike_grad)
+
+        self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, padding=1)
+        self.lif2 = snn.Leaky(beta=beta, spike_grad=spike_grad)
+        self.maxpool = nn.MaxPool1d(3, stride=2)
+        
+        self.conv3 = nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3, padding=1)
+        self.lif3 = snn.Leaky(beta=beta, spike_grad=spike_grad)
+        self.adaptive_pool = nn.AdaptiveAvgPool1d(8)
+
+        self.fc1 = nn.Linear(512, 256)
+        self.lif4 = snn.Leaky(beta=beta, spike_grad=spike_grad)
+
+        self.fc2 = nn.Linear(256, 2)
+        self.lif5 = snn.Leaky(beta=beta, spike_grad=spike_grad)
+        self.lsm = nn.LogSoftmax(dim=1)
+
+
+        self.dropout = nn.Dropout(p=0.3)
+        
+    def forward(self, x, num_steps, time_first=False):
+
+        if not time_first:
+          x=x.transpose(1, 0) # convert to time first, batch second
+
+        mem1 = self.lif1.init_leaky()
+        mem2 = self.lif2.init_leaky()
+        mem3 = self.lif3.init_leaky()
+        mem4 = self.lif4.init_leaky()
+        mem5 = self.lif5.init_leaky()
+
+        spk_rec = []
+        mem_rec = []
+        
+        for step in range(num_steps):
+            spk0 = x[step] # input spikes at t=step
+
+            x = self.conv1(spk0)
+            cur1 = self.maxpool(x)
+            spk1, mem1 = self.lif1(cur1, mem1)
+
+            x = self.conv2(spk1)
+            cur2 = self.maxpool(x)
+            spk2, mem2 = self.lif2(cur2, mem2)
+
+            x = self.conv3(spk2)
+            cur3 = self.adaptive_pool(x)
+            spk3, mem3 = self.lif3(cur3, mem3)
+
+            #x = torch.flatten(spk3, start_dim=1)
+            spk3 = spk3.view(self.batch_size, -1)
+            cur4 = self.fc1(spk3)
+            spk4, mem4 = self.lif4(cur4, mem4)
+
+            cur5 = self.fc1(spk4)
+            spk5, mem5 = self.lif5(cur5, mem5)
+
+            spk_rec.append(spk5.clone())
+            mem_rec.append(mem5.clone())
+            
+
+        return torch.stack(spk_rec, dim=0), torch.stack(mem_rec, dim=0)

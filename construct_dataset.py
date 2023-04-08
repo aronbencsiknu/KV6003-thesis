@@ -14,7 +14,7 @@ class ManipulatedDataset:
         # manipulation characteristics
         self.m_len = 10
         self.price_increase = 30 #bps
-        self.volume_increase = 5 #times
+        self.volume_increase = 20 #times
         self.epsilon = 0.03 # probability of manipulation
 
         self.original_data = original_data
@@ -211,16 +211,18 @@ class LabelledWindows:
         return windows
     
 class SpikingDataset(Dataset):
-    def __init__(self, data, targets, num_steps, encoding="rate"):
+    def __init__(self, data, targets, num_steps, encoding="rate", flatten=True):
         self.data=data.copy()
         self.targets=targets.copy()
         self.encoding=encoding
         self.db=[]
         self.n_classes = 2
+        self.flatten = flatten
 
         for i in range(np.shape(self.data)[0]):
             item = torch.FloatTensor(self.data[i])
-            item=torch.flatten(item)
+            if self.flatten:
+                item=torch.flatten(item)
 
             if self.encoding=="rate":
                 item = spikegen.rate(item,num_steps=num_steps)
