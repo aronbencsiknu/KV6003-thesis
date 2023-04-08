@@ -4,7 +4,7 @@ from construct_dataset import ManipulatedDataset
 from construct_dataset import ExtractFeatures
 from construct_dataset import LabelledWindows
 from construct_dataset import SpikingDataset
-from model import SNN
+from model import SNN, CSNN, CNN
 from options import Options
 from plot_spike_trains import RasterPlot, ManipulationPlot
 
@@ -18,9 +18,11 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix 
 
+
 argparser = argparse.ArgumentParser()
-argparser.add_argument("--output_decoding", type=str, default="rate", help="rate or latency")
-argparser.add_argument("--input_encoding", type=str, default="rate", help="rate or latency")
+argparser.add_argument("--output_decoding", type=str, default="rate", help="rate or latency encoding")
+argparser.add_argument("--input_encoding", type=str, default="rate", help="rate or latency decoding")
+argparser.add_argument("--wandb_logging", action='store_true', help="enable logging to Weights&Biases")
 parsed_args = argparser.parse_args()
 output_decoding = parsed_args.output_decoding
 input_encoding = parsed_args.input_encoding
@@ -42,8 +44,13 @@ y = labelled_windows.labels
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-train_set = SpikingDataset(data=X_train, targets=y_train, encoding=input_encoding, num_steps=opt.num_steps)
-test_set = SpikingDataset(data=X_test, targets=y_test, encoding=input_encoding, num_steps=opt.num_steps)
+#train_set = SpikingDataset(data=X_train, targets=y_train, encoding=input_encoding, num_steps=opt.num_steps)
+#test_set = SpikingDataset(data=X_test, targets=y_test, encoding=input_encoding, num_steps=opt.num_steps)
+
+train_set = SpikingDataset(data=X_train, targets=y_train, encoding=input_encoding, num_steps=opt.num_steps, flatten=False)
+test_set = SpikingDataset(data=X_test, targets=y_test, encoding=input_encoding, num_steps=opt.num_steps, flatten=False)
+
+print("Train set size: ", train_set.db[0][0].size())
 
 print("\nClass counts: ")
 print("\t- 0:", train_set.n_samples_per_class[0])
@@ -64,7 +71,8 @@ elif output_decoding=="latency":
 else:
   raise Exception("Only rate and latency encodings allowed") 
 
-model = SNN(input_size=input_size, hidden_size=opt.hidden_size, output_size=2).to(device)
+#model = SNN(input_size=input_size, hidden_size=opt.hidden_size, output_size=2).to(device)
+model = CSNN(batch_size=opt.batch_size).to(device)
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=opt.learning_rate, betas=(0.9, 0.999))
 
@@ -76,7 +84,8 @@ def train(model,train_loader,optimizer,epoch):
       target=target.to(device)
 
       spk_recs, _ = model(data, opt.num_steps)
-      spk_rec = spk_recs[-1]
+      #spk_rec = spk_recs[-1]
+      spk_rec = spk_recs
 
       loss = loss_fn(spk_rec,target)
       optimizer.zero_grad()
@@ -106,7 +115,8 @@ def test(model,test_loader,decoding):
           data=data.to(device)
           target=target.to(device)
           spk_recs, _ = model(data, opt.num_steps)
-          spk_rec = spk_recs[-1] # get spikes from last layer
+          #spk_rec = spk_recs[-1] # get spikes from last layer
+          spk_rec = spk_recs
           if decoding=="rate":
             acc_val = functional.acc.accuracy_rate(spk_rec,target)
           elif decoding=="latency":

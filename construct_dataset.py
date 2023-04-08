@@ -14,7 +14,7 @@ class ManipulatedDataset:
         # manipulation characteristics
         self.m_len = 10
         self.price_increase = 30 #bps
-        self.volume_increase = 20 #times
+        self.volume_increase = 4 #times
         self.epsilon = 0.03 # probability of manipulation
 
         self.original_data = original_data
@@ -223,7 +223,8 @@ class SpikingDataset(Dataset):
             item = torch.FloatTensor(self.data[i])
             if self.flatten:
                 item=torch.flatten(item)
-
+            else:
+                item = torch.permute(item, (1,0))
             if self.encoding=="rate":
                 item = spikegen.rate(item,num_steps=num_steps)
             elif self.encoding=="latency":
