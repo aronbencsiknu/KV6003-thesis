@@ -3,7 +3,7 @@ import torch
 
 class Options(object):
     def __init__(self, parsed_args):
-        
+
         self.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         self.num_steps = parsed_args.num_steps
         self.learning_rate = parsed_args.learning_rate
@@ -17,3 +17,15 @@ class Options(object):
         self.wandb_project = parsed_args.wandb_project
         self.wandb_entity = parsed_args.wandb_entity
         self.neuron_type = parsed_args.neuron_type
+
+        if self.net_type == "CSNN":
+            self.flatten_data = False
+            self.set_type = "spiking"
+
+        elif self.net_type == "SNN":
+            self.flatten_data = True
+            self.set_type = "spiking"
+
+        elif self.net_type == "CNN":
+            self.flatten_data = False
+            self.set_type = "non-spiking"

@@ -3,7 +3,7 @@ from data import LobsterData
 from construct_dataset import ManipulatedDataset
 from construct_dataset import ExtractFeatures
 from construct_dataset import LabelledWindows
-from construct_dataset import SpikingDataset
+from construct_dataset import SpikingDataset, CustomDataset
 from model import SNN, CSNN, CNN
 from options import Options
 from plot_spike_trains import RasterPlot, ManipulationPlot
@@ -30,7 +30,7 @@ argparser.add_argument("--net_type", type=str, default="CSNN", help="Type of net
 argparser.add_argument("--num_epochs", type=int, default=100, help="Number of epochs to train for")
 argparser.add_argument("--batch_size", type=int, default=64, help="Batch size")
 argparser.add_argument("--num_steps", type=int, default=100, help="Number of time steps to simulate")
-argparser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
+argparser.add_argument("--learning_rate", type=float, default=0.001, help="Learning rate")
 argparser.add_argument("--hidden_size", type=int, default=[100, 100, 100], help="Hidden layer size")
 argparser.add_argument("--neuron_type", type=str, default="Leaky", help="Type of neuron to use (Leaky, Synaptic)")
 
@@ -54,11 +54,17 @@ y = labelled_windows.labels
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
+X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2, random_state=42)
+
 #train_set = SpikingDataset(data=X_train, targets=y_train, encoding=input_encoding, num_steps=opt.num_steps)
 #test_set = SpikingDataset(data=X_test, targets=y_test, encoding=input_encoding, num_steps=opt.num_steps)
 
-train_set = SpikingDataset(data=X_train, targets=y_train, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=False)
-test_set = SpikingDataset(data=X_test, targets=y_test, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=False)
+#train_set = SpikingDataset(data=X_train, targets=y_train, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=False)
+#test_set = SpikingDataset(data=X_test, targets=y_test, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=False)
+
+train_set = CustomDataset(data=X_train, targets=y_train, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=opt.flatten, set_type=opt.set_type)
+test_set = CustomDataset(data=X_test, targets=y_test, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=opt.flatten, set_type=opt.set_type)
+val_set = CustomDataset(data=X_val, targets=y_val, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=opt.flatten, set_type=opt.set_type)
 
 print("Train set size: ", train_set.db[0][0].size())
 
@@ -109,10 +115,12 @@ def train(model,train_loader,optimizer,epoch):
   print("\n--------------------------------------")
   print("Epoch:\t\t",epoch)
   print("Train loss:\t%.2f" % loss_val)
+
+  forward_pass_eval(model, val_loader)
   
   return model
 
-def forward_pass_eval(model,dataloader,decoding, testing=False):
+def forward_pass_eval(model,dataloader, testing=False):
   model.eval()
   test_loss = 0
   acc = 0
@@ -129,9 +137,9 @@ def forward_pass_eval(model,dataloader,decoding, testing=False):
         spk_recs, _ = model(data, opt.num_steps)
         #spk_rec = spk_recs[-1] # get spikes from last layer
         spk_rec = spk_recs
-        if decoding=="rate":
+        if opt.decoding=="rate":
           acc_val = functional.acc.accuracy_rate(spk_rec,target)
-        elif decoding=="latency":
+        elif opt.decoding=="latency":
           acc_val = functional.acc.accuracy_temporal(spk_rec,target)
 
         test_loss_current = loss_fn(spk_rec,target).item()
@@ -183,6 +191,6 @@ def plot_confusion_matrix(y_pred, y_true):
 for epoch in range(1, opt.num_epochs+1):
   model=train(model,train_loader,optimizer,epoch)
 
-test(model, test_loader, output_decoding)
+forward_pass_eval(model, test_loader test=True)
 with torch.no_grad():
   test = RasterPlot(model, test_loader, opt.num_steps, device)

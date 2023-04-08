@@ -310,3 +310,65 @@ class NonSpikingDataset(Dataset):
             print(f"{j}\t-> {i}")
 
         return torch.tensor(w, dtype=torch.float32)
+    
+class CustomDataset(Dataset):
+    def __init__(self, data, targets, num_steps, encoding="rate", flatten=True, set_type="spiking"):
+        self.data=data.copy()
+        self.targets=targets.copy()
+        self.db=[]
+        self.n_classes = 2
+        self.encoding=encoding
+        self.flatten = flatten
+        self.set_type = set_type
+
+        for i in range(np.shape(self.data)[0]):
+            if self.set_type == "spiking":
+                item = torch.FloatTensor(self.data[i])
+            else:
+                item = torch.permute(torch.FloatTensor(self.data[i]),(1,0))
+            
+            if self.flatten:
+                item=torch.flatten(item)
+
+            if self.set_type == "spiking":
+                if self.encoding=="rate":
+                    item = spikegen.rate(item,num_steps=num_steps)
+                elif self.encoding=="latency":
+                    item = spikegen.latency(item,num_steps=num_steps,normalize=True, linear=True)
+                else:
+                    raise Exception("Only rate and latency encodings allowed")
+
+            target=self.targets[i]
+            #print("TARGET:",target)
+            self.db.append([item,target])
+        
+        self.n_samples_per_class = self.get_class_counts()
+        print(self.n_samples_per_class)
+
+    def __len__(self):
+        return len(self.db)
+
+    def __getitem__(self, idx):
+        data = self.db[idx][0]
+        label = self.db[idx][1]
+        return data, label
+    
+    def get_class_counts(self):
+        class_weights = [0] * 2
+        for i in range(len(self.targets)):
+            class_weights[self.targets[i]] += 1
+
+        return class_weights
+    
+    def weights4balance(self):
+        """
+        :return: The class blanace weights for training
+        """
+        print("\nClass weight balancing for training.")
+
+
+        w = [len(self.db) / (self.n_classes * n_curr_class) for n_curr_class in self.n_samples_per_class]
+        for i, j in zip(w, [0, 1]):
+            print(f"{j}\t-> {i}")
+
+        return torch.tensor(w, dtype=torch.float32)
