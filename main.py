@@ -23,11 +23,20 @@ argparser = argparse.ArgumentParser()
 argparser.add_argument("--output_decoding", type=str, default="rate", help="rate or latency encoding")
 argparser.add_argument("--input_encoding", type=str, default="rate", help="rate or latency decoding")
 argparser.add_argument("--wandb_logging", action='store_true', help="enable logging to Weights&Biases")
-parsed_args = argparser.parse_args()
-output_decoding = parsed_args.output_decoding
-input_encoding = parsed_args.input_encoding
+argparser.add_argument("--wandb_project", type=str, default="spiking-neural-network", help="Weights&Biases project name")
+argparser.add_argument("--wandb_entity", type=str, default="aronbencsik", help="Weights&Biases entity name")
+argparser.add_argument("--net_type", type=str, default="CSNN", help="Type of network to use (SNN, CSNN, CNN)")
+argparser.add_argument("--num_epochs", type=int, default=100, help="Number of epochs to train for")
+argparser.add_argument("--batch_size", type=int, default=64, help="Batch size")
+argparser.add_argument("--num_steps", type=int, default=100, help="Number of time steps to simulate")
+argparser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
+argparser.add_argument("--hidden_size", type=int, default=[100, 100, 100], help="Hidden layer size")
+argparser.add_argument("--neuron_type", type=str, default="Leaky", help="Type of neuron to use (Leaky, Synaptic)")
 
-opt = Options()
+
+parsed_args = argparser.parse_args()
+opt = Options(parsed_args)
+
 device = opt.device
 
 unmanipulated_data = LobsterData()
@@ -47,8 +56,8 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 #train_set = SpikingDataset(data=X_train, targets=y_train, encoding=input_encoding, num_steps=opt.num_steps)
 #test_set = SpikingDataset(data=X_test, targets=y_test, encoding=input_encoding, num_steps=opt.num_steps)
 
-train_set = SpikingDataset(data=X_train, targets=y_train, encoding=input_encoding, num_steps=opt.num_steps, flatten=False)
-test_set = SpikingDataset(data=X_test, targets=y_test, encoding=input_encoding, num_steps=opt.num_steps, flatten=False)
+train_set = SpikingDataset(data=X_train, targets=y_train, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=False)
+test_set = SpikingDataset(data=X_test, targets=y_test, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=False)
 
 print("Train set size: ", train_set.db[0][0].size())
 
