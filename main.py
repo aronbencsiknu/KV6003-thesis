@@ -17,6 +17,7 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix 
+import wandb
 
 
 argparser = argparse.ArgumentParser()
@@ -72,10 +73,10 @@ for batch_idx, (data, target) in enumerate(train_loader):
   input_size = np.shape(data)[2]
   break
 
-if output_decoding=="rate":
+if opt.output_decoding=="rate":
   #loss_fn = mse_count_loss(correct_rate=1, incorrect_rate=0.1)
   loss_fn = functional.loss.mse_count_loss(correct_rate=1, incorrect_rate=0.2)
-elif output_decoding=="latency":
+elif opt.output_decoding=="latency":
   loss_fn = functional.loss.mse_temporal_loss(target_is_time=False, on_target=0, off_target=opt.num_steps, tolerance=5, multi_spike=False)
 else:
   raise Exception("Only rate and latency encodings allowed") 
@@ -101,6 +102,8 @@ def train(model,train_loader,optimizer,epoch):
       loss.backward()
       optimizer.step()
       loss_val+=loss.item()
+      if opt.wandb_logging:
+        wandb.log({"loss": loss.item()})
 
   loss_val /= len(train_loader)
   print("\n--------------------------------------")
@@ -109,7 +112,7 @@ def train(model,train_loader,optimizer,epoch):
   
   return model
 
-def test(model,test_loader,decoding):
+def forward_pass_eval(model,dataloader,decoding, testing=False):
   model.eval()
   test_loss = 0
   acc = 0
@@ -120,35 +123,46 @@ def test(model,test_loader,decoding):
   label_names = ["No manipulation", "Manipulation"]
 
   with torch.no_grad():
-      for data, target in test_loader:
-          data=data.to(device)
-          target=target.to(device)
-          spk_recs, _ = model(data, opt.num_steps)
-          #spk_rec = spk_recs[-1] # get spikes from last layer
-          spk_rec = spk_recs
-          if decoding=="rate":
-            acc_val = functional.acc.accuracy_rate(spk_rec,target)
-          elif decoding=="latency":
-            acc_val = functional.acc.accuracy_temporal(spk_rec,target)
+    for data, target in dataloader:
+        data=data.to(device)
+        target=target.to(device)
+        spk_recs, _ = model(data, opt.num_steps)
+        #spk_rec = spk_recs[-1] # get spikes from last layer
+        spk_rec = spk_recs
+        if decoding=="rate":
+          acc_val = functional.acc.accuracy_rate(spk_rec,target)
+        elif decoding=="latency":
+          acc_val = functional.acc.accuracy_temporal(spk_rec,target)
 
-          test_loss_current = loss_fn(spk_rec,target).item()
-          test_loss+=test_loss_current
-          acc+=acc_val
+        test_loss_current = loss_fn(spk_rec,target).item()
+        test_loss+=test_loss_current
+        acc+=acc_val
 
-          _, predicted = spk_rec.sum(dim=0).max(dim=1)
+        _, predicted = spk_rec.sum(dim=0).max(dim=1)
 
-          if len(data)==opt.batch_size:
-            for i in range(opt.batch_size):
-              y_pred.append(predicted[i].item())
-              y_true.append(target[i].item())
+        if opt.wandb_logging and not testing:
+          wandb.log({"Validation loss": test_loss_current, "Validation Accuracy": acc_val})
 
-      plot_confusion_matrix(y_pred, y_true)
+        elif opt.wandb_logging and testing:
+          wandb.log({"Test loss": test_loss_current, "Test Accuracy": acc_val})
+
+        if len(data)==opt.batch_size and testing:
+          for i in range(opt.batch_size):
+            y_pred.append(predicted[i].item())
+            y_true.append(target[i].item())
+
+  if testing:
+    plot_confusion_matrix(y_pred, y_true)
 
   test_loss /= len(test_loader)
   acc /= len(test_loader)
 
-  print("Test loss:\t%.4f" % test_loss)
-  print("Test acc:\t%.4f" % acc,"\n")
+  if testing:
+    print("Test loss:\t%.4f" % test_loss)
+    print("Test acc:\t%.4f" % acc,"\n")
+  else:
+    print("Val loss:\t%.4f" % test_loss)
+    print("Val acc:\t%.4f" % acc,"\n")
 
 def plot_confusion_matrix(y_pred, y_true):
     
