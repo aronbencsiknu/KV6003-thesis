@@ -40,6 +40,7 @@ opt = Options(parsed_args)
 
 device = opt.device
 
+print("Creating dataset...")
 unmanipulated_data = LobsterData()
 manipulated_data = ManipulatedDataset(unmanipulated_data.orderbook_data)
 
@@ -54,7 +55,7 @@ y = labelled_windows.labels
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2, random_state=42)
+X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1, random_state=42)
 
 #train_set = SpikingDataset(data=X_train, targets=y_train, encoding=input_encoding, num_steps=opt.num_steps)
 #test_set = SpikingDataset(data=X_test, targets=y_test, encoding=input_encoding, num_steps=opt.num_steps)
@@ -62,11 +63,9 @@ X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.
 #train_set = SpikingDataset(data=X_train, targets=y_train, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=False)
 #test_set = SpikingDataset(data=X_test, targets=y_test, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=False)
 
-train_set = CustomDataset(data=X_train, targets=y_train, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=opt.flatten, set_type=opt.set_type)
-test_set = CustomDataset(data=X_test, targets=y_test, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=opt.flatten, set_type=opt.set_type)
-val_set = CustomDataset(data=X_val, targets=y_val, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=opt.flatten, set_type=opt.set_type)
-
-print("Train set size: ", train_set.db[0][0].size())
+train_set = CustomDataset(data=X_train, targets=y_train, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=opt.flatten_data, set_type=opt.set_type)
+test_set = CustomDataset(data=X_test, targets=y_test, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=opt.flatten_data, set_type=opt.set_type)
+val_set = CustomDataset(data=X_val, targets=y_val, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=opt.flatten_data, set_type=opt.set_type)
 
 print("\nClass counts: ")
 print("\t- 0:", train_set.n_samples_per_class[0])
@@ -74,6 +73,11 @@ print("\t- 1:", train_set.n_samples_per_class[1])
 
 train_loader = DataLoader(train_set, batch_size=opt.batch_size, shuffle=True)
 test_loader = DataLoader(test_set, batch_size=opt.batch_size, shuffle=True)
+val_loader = DataLoader(val_set, batch_size=opt.batch_size, shuffle=True)
+
+print("\nTrain set size:", len(train_set))
+print("Test set size:", len(test_set))
+print("Validation set size:", len(val_set))
 
 for batch_idx, (data, target) in enumerate(train_loader):
   input_size = np.shape(data)[2]
@@ -112,8 +116,7 @@ def train(model,train_loader,optimizer,epoch):
         wandb.log({"loss": loss.item()})
 
   loss_val /= len(train_loader)
-  print("\n--------------------------------------")
-  print("Epoch:\t\t",epoch)
+  print("\nEpoch:\t\t",epoch,"/",opt.num_epochs)
   print("Train loss:\t%.2f" % loss_val)
 
   forward_pass_eval(model, val_loader)
@@ -137,9 +140,9 @@ def forward_pass_eval(model,dataloader, testing=False):
         spk_recs, _ = model(data, opt.num_steps)
         #spk_rec = spk_recs[-1] # get spikes from last layer
         spk_rec = spk_recs
-        if opt.decoding=="rate":
+        if opt.output_decoding=="rate":
           acc_val = functional.acc.accuracy_rate(spk_rec,target)
-        elif opt.decoding=="latency":
+        elif opt.output_decoding=="latency":
           acc_val = functional.acc.accuracy_temporal(spk_rec,target)
 
         test_loss_current = loss_fn(spk_rec,target).item()
@@ -162,9 +165,13 @@ def forward_pass_eval(model,dataloader, testing=False):
   if testing:
     plot_confusion_matrix(y_pred, y_true)
 
-  test_loss /= len(test_loader)
-  acc /= len(test_loader)
+    test_loss /= len(test_loader)
+    acc /= len(test_loader)
 
+  else:
+    test_loss /= len(val_loader)
+    acc /= len(val_loader)
+  
   if testing:
     print("Test loss:\t%.4f" % test_loss)
     print("Test acc:\t%.4f" % acc,"\n")
@@ -191,6 +198,6 @@ def plot_confusion_matrix(y_pred, y_true):
 for epoch in range(1, opt.num_epochs+1):
   model=train(model,train_loader,optimizer,epoch)
 
-forward_pass_eval(model, test_loader test=True)
+forward_pass_eval(model, test_loader, testing=True)
 with torch.no_grad():
   test = RasterPlot(model, test_loader, opt.num_steps, device)

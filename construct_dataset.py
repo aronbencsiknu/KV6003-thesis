@@ -329,6 +329,8 @@ class CustomDataset(Dataset):
             
             if self.flatten:
                 item=torch.flatten(item)
+            elif self.set_type == "spiking" and not self.flatten:
+                item = torch.permute(item, (1,0))
 
             if self.set_type == "spiking":
                 if self.encoding=="rate":
@@ -343,7 +345,6 @@ class CustomDataset(Dataset):
             self.db.append([item,target])
         
         self.n_samples_per_class = self.get_class_counts()
-        print(self.n_samples_per_class)
 
     def __len__(self):
         return len(self.db)
