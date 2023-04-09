@@ -1,4 +1,5 @@
 import torch
+from snntorch import functional
 
 
 class Options(object):
@@ -17,6 +18,9 @@ class Options(object):
         self.wandb_project = parsed_args.wandb_project
         self.wandb_entity = parsed_args.wandb_entity
         self.neuron_type = parsed_args.neuron_type
+        self.window_length = parsed_args.window_length
+
+        self.wandb_key = "edfb94e4b9dca47c397a343d2829e9af262d9e32"
 
         if self.net_type == "CSNN":
             self.flatten_data = False
@@ -29,3 +33,5 @@ class Options(object):
         elif self.net_type == "CNN":
             self.flatten_data = False
             self.set_type = "non-spiking"
+
+        self.wandb_group = self.net_type + "_" + self.input_encoding + "_" + self.output_decoding + "_" + self.neuron_type

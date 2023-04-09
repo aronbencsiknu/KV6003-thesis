@@ -12,10 +12,10 @@ class ManipulatedDataset:
     def __init__(self, original_data):
 
         # manipulation characteristics
-        self.m_len = 10
+        self.m_len = 5
         self.price_increase = 30 #bps
         self.volume_increase = 4 #times
-        self.epsilon = 0.03 # probability of manipulation
+        self.epsilon = 0.08 # probability of manipulation
 
         self.original_data = original_data
         self.data = copy.deepcopy(original_data)
