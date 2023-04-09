@@ -189,7 +189,7 @@ class CNN(nn.Module):
     """Convenrional CNN for comparison"""
     def __init__(self):
         super(CNN, self).__init__()
-        self.conv1 = nn.Conv1d(in_channels=2, out_channels=16, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv1d(in_channels=4, out_channels=16, kernel_size=3, padding=1)
         self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, padding=1)
         self.maxpool = nn.MaxPool1d(3, stride=2)
         self.adaptive_pool = nn.AdaptiveAvgPool1d(8)

@@ -52,6 +52,14 @@ class Metrics():
             _, predicted = y_pred.sum(dim=0).max(dim=1)
 
             return predicted
+        
+    def forward_pass(self, net, x, num_steps):
+        if self.net_type=="CSNN":
+            return net(x, num_steps)
+        elif self.net_type=="SNN":
+            return net(x, num_steps)
+        elif self.net_type=="CNN":
+            return net(x)
     """def precision(self):
         return precision_score(self.y_true, self.y_pred)
 

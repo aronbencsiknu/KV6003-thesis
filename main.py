@@ -123,7 +123,8 @@ def train(model,train_loader,optimizer,epoch, logging_index):
       target=target.to(opt.device)
 
       #spk_recs, _ = model(data, opt.num_steps)
-      output = model(data, opt.num_steps)
+      #output = model(data, opt.num_steps)
+      output = metrics.forward_pass(model, data, opt.num_steps)
       #spk_rec = spk_recs
 
       #loss = loss_fn(spk_rec,target)
@@ -158,7 +159,8 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
     for data, target in dataloader:
       data=data.to(opt.device)
       target=target.to(opt.device)
-      output = model(data, opt.num_steps)
+      #output = model(data, opt.num_steps)
+      output = metrics.forward_pass(model, data, opt.num_steps)
       #spk_rec = spk_recs[-1] # get spikes from last layer
       """if opt.output_decoding=="rate":
         acc_val = functional.acc.accuracy_rate(spk_rec,target)
