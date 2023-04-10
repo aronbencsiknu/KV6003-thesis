@@ -113,7 +113,7 @@ class CSNN(nn.Module):
 
         self.adaptive_pool = nn.AdaptiveAvgPool1d(2)
 
-        self.synapses.append(nn.Linear(128, 256))
+        self.synapses.append(nn.Linear(2*hidden_size[-1], 256))
         self.neurons.append(snn.Leaky(beta=beta, spike_grad=spike_grad, learn_threshold=True))
 
         self.synapses.append(nn.Linear(256, 2))
@@ -157,8 +157,8 @@ class CSNN(nn.Module):
                     spikes, syns[i], membranes[i] = self.neurons[i](current, syns[i], membranes[i])
 
                 # record output layer membrane potentials and spikes
-                mem_recs[i].append(membranes[i].clone())
-                spk_recs[i].append(spikes.clone())
+                mem_recs[i].append(torch.flatten(membranes[i].clone(), start_dim=1))
+                spk_recs[i].append(torch.flatten(spikes.clone(), start_dim=1))
 
             spikes = self.adaptive_pool(spikes)
             spikes = torch.flatten(spikes, start_dim=1)

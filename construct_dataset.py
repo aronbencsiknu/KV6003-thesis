@@ -13,7 +13,7 @@ class ManipulatedDataset:
 
         # manipulation characteristics
         self.m_len = 5
-        self.price_increase = 30 #bps
+        self.price_increase = 8 #bps
         self.volume_increase = 4 #times
         self.epsilon = 0.08 # probability of manipulation
 
@@ -51,7 +51,6 @@ class ManipulatedDataset:
                 self.manipulated_bid_volume = np.concatenate((self.manipulated_bid_volume[:i], manipulated_orderbook[3], self.manipulated_bid_volume[i:]))
 
                 i+=self.m_len
-                #print(i)
 
         a_p = self.manipulated_ask_price
         a_v = self.manipulated_ask_volume
@@ -171,7 +170,8 @@ class ExtractFeatures:
 class LabelledWindows:
     def __init__(self, data, manipulation_indices, window_size):
         self.manipulation_indices = manipulation_indices
-        self.windows = self.slice_data_to_windows(data, window_size)
+        self.overlap = 0.6
+        self.windows = self.slice_data_to_windows(data, window_size, self.overlap)
         self.labels = []
         index = 0
         for i in range(np.shape(self.windows)[0]):
@@ -187,9 +187,9 @@ class LabelledWindows:
             else:
                 self.labels.append(0)
 
-            index+=window_size
+            index+= window_size * (1 - self.overlap)
 
-    def slice_data_to_windows(self, data, window_size):
+    def slice_data_to_windows(self, data, window_size, overlap=0):
         """
         Slices the data into windows of size window_size
         
@@ -200,7 +200,7 @@ class LabelledWindows:
         windows = []
         for i in range(0, len(data)): # for each feature
             window = []
-            for j in range(0, len(data[0]), int(window_size)): # for each window 
+            for j in range(0, len(data[0]), int(window_size * (1 - overlap))): # for each window 
                 if j + window_size < len(data[0]):
                     chunk = data[i][j : j+window_size]
                     window.append(chunk)

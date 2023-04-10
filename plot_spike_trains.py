@@ -7,8 +7,8 @@ import numpy as np
 
 class RasterPlot(object):
     def __init__(self, model, test_loader, num_steps, device):
-
-        spk_recs = self.get_spike_data(model, test_loader, num_steps, device)
+        with torch.no_grad():
+            spk_recs = self.get_spike_data(model, test_loader, num_steps, device)
         self.plot(spk_recs)
 
     def plot(self, spk_recs):
@@ -34,7 +34,7 @@ class RasterPlot(object):
         for i in range(len(spk_recs)):
             spk_recs[i] = torch.permute(spk_recs[i],(1,0,2))[0]
 
-        spk_recs.insert(0, test_data[0])
+        spk_recs.insert(0, torch.flatten(test_data[0], start_dim=1))
 
         return spk_recs
 
@@ -46,14 +46,13 @@ class RasterPlot(object):
 
 class ManipulationPlot(object):
     def __init__(self, manipulated_data):
-        fig, axs = plt.subplots(2, 2, figsize=(10, 5))
+        fig, axs = plt.subplots(2, 1, figsize=(10, 5))
         plot_range = [0, 1400]
         for y in range(2):
-            for z in range(2):
                 for i in range(plot_range[0], plot_range[1]):
                     if i in manipulated_data.manipulation_indeces:
-                        axs[y][z].axvline(x = i, color = 'r', label = 'axvline - full height', linestyle='dotted', linewidth=0.5)
-                    axs[y][z].plot(manipulated_data.data[y+z][plot_range[0]:plot_range[1]], color='b', linewidth=1)
+                        axs[y].axvline(x = i, color = 'r', label = 'axvline - full height', linestyle='dotted', linewidth=0.5)
+                    axs[y].plot(manipulated_data.data[y][plot_range[0]:plot_range[1]], color='b', linewidth=1)
 
         plt.show()
 

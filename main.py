@@ -20,23 +20,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix 
 import wandb
 
-argparser = argparse.ArgumentParser()
-argparser.add_argument("--output_decoding", type=str, default="rate", help="rate or latency encoding")
-argparser.add_argument("--input_encoding", type=str, default="rate", help="rate or latency decoding")
-argparser.add_argument("-wb", "--wandb_logging", action='store_true', help="enable logging to Weights&Biases")
-argparser.add_argument("--wandb_project", type=str, default="spiking-neural-network-experiments", help="Weights&Biases project name")
-argparser.add_argument("--wandb_entity", type=str, default="aronbencsik", help="Weights&Biases entity name")
-argparser.add_argument("--net_type", type=str, default="CSNN", help="Type of network to use (SNN, CSNN, CNN)")
-argparser.add_argument("--num_epochs", type=int, default=100, help="Number of epochs to train for")
-argparser.add_argument("--batch_size", type=int, default=64, help="Batch size")
-argparser.add_argument("--num_steps", type=int, default=100, help="Number of time steps to simulate")
-argparser.add_argument("--learning_rate", type=float, default=0.001, help="Learning rate")
-argparser.add_argument("--hidden_size", type=int, default=[100, 100, 100], help="Hidden layer size")
-argparser.add_argument("--neuron_type", type=str, default="Leaky", help="Type of neuron to use (Leaky, Synaptic)")
-argparser.add_argument("--window_length", type=int, default=20, help="Length of the window to use for the dataset")
-
-parsed_args = argparser.parse_args()
-opt = Options(parsed_args)
+opt = Options().parse()
 
 if opt.wandb_logging:
     
@@ -70,11 +54,6 @@ y = labelled_windows.labels
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1, random_state=42)
 
-"""train_set = SpikingDataset(data=X_train, targets=y_train, encoding=input_encoding, num_steps=opt.num_steps)
-#test_set = SpikingDataset(data=X_test, targets=y_test, encoding=input_encoding, num_steps=opt.num_steps)
-#train_set = SpikingDataset(data=X_train, targets=y_train, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=False)
-#test_set = SpikingDataset(data=X_test, targets=y_test, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=False)"""
-
 train_set = CustomDataset(data=X_train, targets=y_train, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=opt.flatten_data, set_type=opt.set_type)
 test_set = CustomDataset(data=X_test, targets=y_test, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=opt.flatten_data, set_type=opt.set_type)
 val_set = CustomDataset(data=X_val, targets=y_val, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=opt.flatten_data, set_type=opt.set_type)
@@ -95,17 +74,7 @@ for batch_idx, (data, target) in enumerate(train_loader):
   input_size = np.shape(data)[2]
   break
 
-"""if opt.set_type=="non-spiking":
-    loss_fn = torch.nn.NLLLoss(train_set.weights4balance().to(opt.device))
-elif opt.output_decoding=="rate":
-    #loss_fn = mse_count_loss(correct_rate=1, incorrect_rate=0.1)
-    loss_fn = functional.loss.mse_count_loss(correct_rate=1, incorrect_rate=0.1)
-elif opt.output_decoding=="latency":
-    loss_fn = functional.loss.mse_temporal_loss(target_is_time=False, on_target=0, off_target=opt.num_steps, tolerance=5, multi_spike=False)"""
-
 metrics = Metrics(opt.net_type, opt.set_type, opt.output_decoding, train_set, opt.device)
-
-#model = SNN(input_size=input_size, hidden_size=opt.hidden_size, output_size=2).to(opt.device)
 
 if opt.net_type=="CSNN":
   model = CSNN(batch_size=opt.batch_size).to(opt.device)
@@ -122,12 +91,8 @@ def train(model,train_loader,optimizer,epoch, logging_index):
       data=data.to(opt.device)
       target=target.to(opt.device)
 
-      #spk_recs, _ = model(data, opt.num_steps)
-      #output = model(data, opt.num_steps)
       output = metrics.forward_pass(model, data, opt.num_steps)
-      #spk_rec = spk_recs
 
-      #loss = loss_fn(spk_rec,target)
       loss = metrics.loss(output,target)
       optimizer.zero_grad()
       loss.backward()
@@ -161,19 +126,11 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
       target=target.to(opt.device)
       #output = model(data, opt.num_steps)
       output = metrics.forward_pass(model, data, opt.num_steps)
-      #spk_rec = spk_recs[-1] # get spikes from last layer
-      """if opt.output_decoding=="rate":
-        acc_val = functional.acc.accuracy_rate(spk_rec,target)
-      elif opt.output_decoding=="latency":
-        acc_val = functional.acc.accuracy_temporal(spk_rec,target)"""
       acc_val = metrics.accuracy(output,target)
 
-      #test_loss_current = loss_fn(spk_rec,target).item()
       test_loss_current = metrics.loss(output,target).item()
       test_loss+=test_loss_current
       acc+=acc_val
-
-      #_, predicted = spk_rec.sum(dim=0).max(dim=1)
 
       if opt.wandb_logging and not testing:
         wandb.log({"Validation loss": test_loss_current, 
@@ -239,7 +196,7 @@ for epoch in range(1, opt.num_epochs+1):
 logging_index_forward_eval = 0
 forward_pass_eval(model, test_loader, logging_index_forward_eval, testing=True)
 
-with torch.no_grad():
-  test = RasterPlot(model, test_loader, opt.num_steps, opt.device)
+
+RasterPlot(model, test_loader, opt.num_steps, opt.device)
 
 wandb.finish()
