@@ -168,9 +168,9 @@ class ExtractFeatures:
         return gradients
 
 class LabelledWindows:
-    def __init__(self, data, manipulation_indices, window_size):
+    def __init__(self, data, manipulation_indices, window_size, overlap):
         self.manipulation_indices = manipulation_indices
-        self.overlap = 0.6
+        self.overlap = overlap
         self.windows = self.slice_data_to_windows(data, window_size, self.overlap)
         self.labels = []
         index = 0

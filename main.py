@@ -45,7 +45,7 @@ manipulated_data = ManipulatedDataset(unmanipulated_data.orderbook_data)
 extracted_features = ExtractFeatures(manipulated_data.data)
 input_features = extracted_features.features
 
-labelled_windows = LabelledWindows(input_features, manipulated_data.manipulation_indeces, window_size=opt.window_length)
+labelled_windows = LabelledWindows(input_features, manipulated_data.manipulation_indeces, window_size=opt.window_length, window_overlap=opt.window_overlap)
 X = labelled_windows.windows
 y = labelled_windows.labels
 
