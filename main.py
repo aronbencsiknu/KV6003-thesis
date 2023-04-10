@@ -3,16 +3,14 @@ from data import LobsterData
 from construct_dataset import ManipulatedDataset
 from construct_dataset import ExtractFeatures
 from construct_dataset import LabelledWindows
-from construct_dataset import SpikingDataset, CustomDataset
+from construct_dataset import CustomDataset
 from model import SNN, CSNN, CNN
 from options import Options
-from plot_spike_trains import RasterPlot, ManipulationPlot
+from plots import RasterPlot, ManipulationPlot
 from metrics import Metrics
 
 # external imports
-from snntorch import functional
 import torch
-import argparse
 import numpy as np
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
