@@ -1,8 +1,10 @@
 # local imports
 from data import LobsterData
-from construct_dataset import ManipulatedDataset
+"""from construct_dataset import ManipulatedDataset
 from construct_dataset import ExtractFeatures
 from construct_dataset import LabelledWindows
+from construct_dataset import CustomDataset"""
+import construct_dataset
 from construct_dataset import CustomDataset
 from model import SNN, CSNN, CNN
 from options import Options
@@ -38,18 +40,11 @@ if opt.wandb_logging:
                settings=wandb.Settings(start_method="thread"),
                config=opt)
 
-print("\nCreating dataset...")
 unmanipulated_data = LobsterData()
-manipulated_data = ManipulatedDataset(unmanipulated_data.orderbook_data)
 
 #ManipulationPlot(manipulated_data)
 
-extracted_features = ExtractFeatures(manipulated_data.data)
-input_features = extracted_features.features
-
-labelled_windows = LabelledWindows(input_features, manipulated_data.manipulation_indeces, window_size=opt.window_length, window_overlap=opt.window_overlap)
-X = labelled_windows.windows
-y = labelled_windows.labels
+X, y = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, True, opt.window_length, opt.window_overlap)
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1, random_state=42)
@@ -58,17 +53,20 @@ train_set = CustomDataset(data=X_train, targets=y_train, encoding=opt.input_enco
 test_set = CustomDataset(data=X_test, targets=y_test, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=opt.flatten_data, set_type=opt.set_type)
 val_set = CustomDataset(data=X_val, targets=y_val, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=opt.flatten_data, set_type=opt.set_type)
 
-print("\nClass counts: ")
+print("\n----------------------------------\n")
+print("Class counts: ")
 print("\t- 0:", train_set.n_samples_per_class[0])
 print("\t- 1:", train_set.n_samples_per_class[1])
+print("\n----------------------------------\n")
 
 train_loader = DataLoader(train_set, batch_size=opt.batch_size, shuffle=True)
 test_loader = DataLoader(test_set, batch_size=opt.batch_size, shuffle=True)
 val_loader = DataLoader(val_set, batch_size=opt.batch_size, shuffle=True)
 
-print("\nTrain set size:", len(train_set))
-print("Test set size:", len(test_set))
-print("Validation set size:", len(val_set))
+print("Train set size:\t\t", len(train_set))
+print("Test set size:\t\t", len(test_set))
+print("Validation set size:\t", len(val_set))
+print("\n----------------------------------\n")
 
 for batch_idx, (data, target) in enumerate(train_loader):
   input_size = np.shape(data)[2]
@@ -88,10 +86,10 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=opt.learning_rate, betas=(0
 def train(model,train_loader,optimizer,epoch, logging_index, stop_early):
   model.train()
   loss_val=0
+  print("\nEpoch:\t\t",epoch,"/",opt.num_epochs)
   for batch_idx, (data, target) in enumerate(train_loader):
       if stop_early:
         break
-
       data=data.to(opt.device)
       target=target.to(opt.device)
 
@@ -109,8 +107,7 @@ def train(model,train_loader,optimizer,epoch, logging_index, stop_early):
       logging_index+=1
 
   loss_val /= len(train_loader)
-  print("\nEpoch:\t\t",epoch,"/",opt.num_epochs)
-  print("Train loss:\t%.2f" % loss_val)
+  print("Train loss:\t%.3f" % loss_val)
 
  
   return model, logging_index
@@ -165,18 +162,20 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
 
     loss /= len(test_loader)
     acc /= len(test_loader)
+    acc = acc*100
 
   else:
     loss /= len(val_loader)
     acc /= len(val_loader)
+    acc = acc*100
     
   
   if testing:
-    print("Test loss:\t%.4f" % loss)
-    print("Test acc:\t%.4f" % acc,"\n")
+    print("Test loss:\t%.3f" % loss)
+    print("Test acc:\t%.2f" % acc+"%\n")
   else:
-    print("Val loss:\t%.4f" % loss)
-    print("Val acc:\t%.4f" % acc,"\n")
+    print("Val loss:\t%.3f" % loss)
+    print("Val acc:\t%.2f"% acc+"%\n")
 
     early_stopping(loss, model)
 

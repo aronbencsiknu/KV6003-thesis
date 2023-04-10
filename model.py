@@ -2,6 +2,7 @@ import torch.nn as nn
 import torch
 import snntorch as snn
 from snntorch import surrogate
+import numpy as np
 
 
 """
@@ -176,6 +177,16 @@ class CSNN(nn.Module):
 
         return [spk_recs, mem_recs]
     
+    def generate_gaussian_feature(self):
+        gaussian_dist = np.random.normal(size=(self.batch_size, 2 * self.hidden_size[-1]))
+        max = np.asarray(gaussian_dist[i]).max()
+        min = np.asarray(gaussian_dist[i]).min()
+
+        for i in range(gaussian_dist[i]):
+            # normalizing values as: value' = (value - min) / (max - min)
+            gaussian_dist[i] = (gaussian_dist[i] - min) / (max - min)
+
+        return gaussian_dist
 
 """
 ###############################

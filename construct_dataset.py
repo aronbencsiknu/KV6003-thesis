@@ -68,7 +68,6 @@ class ManipulatedDataset:
 
         return np.concatenate((pumping_array, dumping_array))
 
-
     def generate_manipulated_bid_ask_volume(self,V0, m_len):
         pump_len = int(m_len/3)
         dump_len = m_len - pump_len
@@ -77,7 +76,6 @@ class ManipulatedDataset:
         dumping_array = np.linspace(V0 * self.volume_increase, V0, dump_len)
 
         return np.concatenate((pumping_array, dumping_array))
-
 
     def generate_manipulated_instance(self, ask_P0, ask_V0, bid_P0, bid_V0, m_len):
 
@@ -88,6 +86,7 @@ class ManipulatedDataset:
         manipulated_ask_volume = self.generate_manipulated_bid_ask_volume(ask_V0, m_len)
 
         return [manipulated_ask_price, manipulated_ask_volume, manipulated_bid_price, manipulated_bid_volume]
+
 
 class ExtractFeatures:
     def __init__(self, data):
@@ -125,15 +124,20 @@ class ExtractFeatures:
         self.features.append(self.extract_high_frequencies(self.original_bid_volume))
         self.features.append(self.extract_high_frequencies(self.original_ask_volume))"""
 
+        # clip the features to the same length
         min = len(self.features[0])
         for i in range(len(self.features)):
             if len(self.features[i]) < min:
                 min = len(self.features[i])
+
         for i in range(len(self.features)):
             self.features[i] = self.features[i][:min]
+
+        # normalize the features
         for i in range(len(self.features)):
             max = np.asarray(self.features[i]).max()
             min = np.asarray(self.features[i]).min()
+
             for j in range(len(self.features[i])):
                 # normalizing values as: value' = (value - min) / (max - min)
                 self.features[i][j] = (self.features[i][j] - min) / (max - min)
@@ -167,23 +171,27 @@ class ExtractFeatures:
         gradients.append(gradients[-1])
         return gradients
 
+
 class LabelledWindows:
-    def __init__(self, data, manipulation_indices, window_size, window_overlap):
+    def __init__(self, data, manipulation_indices, window_size, window_overlap, manipulated_data):
         self.manipulation_indices = manipulation_indices
         self.overlap = window_overlap
         self.windows = self.slice_data_to_windows(data, window_size, self.overlap)
         self.labels = []
         index = 0
         for i in range(np.shape(self.windows)[0]):
-            in_range = False
+            if manipulated_data:
+                in_range = False
 
-            for j in range(len(manipulation_indices)):
-                if index+5 < manipulation_indices[j] and manipulation_indices[j] < index+window_size-5:
-                    in_range = True
-                    break
+                for j in range(len(manipulation_indices)):
+                    if index+5 < manipulation_indices[j] and manipulation_indices[j] < index+window_size-5:
+                        in_range = True
+                        break
 
-            if in_range:
-                self.labels.append(1)
+                if in_range:
+                    self.labels.append(1)
+                else:
+                    self.labels.append(0)
             else:
                 self.labels.append(0)
 
@@ -195,7 +203,9 @@ class LabelledWindows:
         
         Parameters:
             data (np.array): The data to be sliced
-            window_size (int): The size of the window"""
+            window_size (int): The size of the window
+        
+        """
         
         windows = []
         for i in range(0, len(data)): # for each feature
@@ -210,6 +220,84 @@ class LabelledWindows:
         windows = np.transpose(np.asarray(windows), (1,2,0))
         return windows
     
+    
+class CustomDataset(Dataset):
+    def __init__(self, data, targets, num_steps, encoding="rate", flatten=True, set_type="spiking"):
+        self.data=data.copy()
+        self.targets=targets.copy()
+        self.db=[]
+        self.n_classes = 2
+        self.encoding=encoding
+        self.flatten = flatten
+        self.set_type = set_type
+
+        for i in range(np.shape(self.data)[0]):
+            if self.set_type == "spiking":
+                item = torch.FloatTensor(self.data[i])
+            else:
+                item = torch.permute(torch.FloatTensor(self.data[i]),(1,0))
+            
+            if self.flatten:
+                item=torch.flatten(item)
+            elif self.set_type == "spiking" and not self.flatten:
+                item = torch.permute(item, (1,0))
+
+            if self.set_type == "spiking":
+                if self.encoding=="rate":
+                    item = spikegen.rate(item,num_steps=num_steps)
+                elif self.encoding=="latency":
+                    item = spikegen.latency(item,num_steps=num_steps,normalize=True, linear=True)
+                else:
+                    raise Exception("Only rate and latency encodings allowed")
+
+            target=self.targets[i]
+            #print("TARGET:",target)
+            self.db.append([item,target])
+        
+        self.n_samples_per_class = self.get_class_counts()
+
+    def __len__(self):
+        return len(self.db)
+
+    def __getitem__(self, idx):
+        data = self.db[idx][0]
+        label = self.db[idx][1]
+        return data, label
+    
+    def get_class_counts(self):
+        class_weights = [0] * 2
+        for i in range(len(self.targets)):
+            class_weights[self.targets[i]] += 1
+
+        return class_weights
+    
+    def weights4balance(self):
+        """
+        :return: The class blanace weights for training
+        """
+        print("\nClass weight balancing for training.")
+
+
+        w = [len(self.db) / (self.n_classes * n_curr_class) for n_curr_class in self.n_samples_per_class]
+        for i, j in zip(w, [0, 1]):
+            print(f"{j}\t-> {i}")
+
+        return torch.tensor(w, dtype=torch.float32)
+    
+def prepare_data(data, inject, window_length, window_overlap):
+    if inject:
+        manipulated_data = ManipulatedDataset(data)
+        data = manipulated_data.data
+
+    extracted_features = ExtractFeatures(data)
+    input_features = extracted_features.features
+
+    labelled_windows = LabelledWindows(input_features, manipulated_data.manipulation_indeces, window_length, window_overlap, inject)
+    X = labelled_windows.windows
+    y = labelled_windows.labels
+
+    return X, y
+
 class SpikingDataset(Dataset):
     def __init__(self, data, targets, num_steps, encoding="rate", flatten=True):
         self.data=data.copy()
@@ -311,65 +399,3 @@ class NonSpikingDataset(Dataset):
 
         return torch.tensor(w, dtype=torch.float32)
     
-class CustomDataset(Dataset):
-    def __init__(self, data, targets, num_steps, encoding="rate", flatten=True, set_type="spiking"):
-        self.data=data.copy()
-        self.targets=targets.copy()
-        self.db=[]
-        self.n_classes = 2
-        self.encoding=encoding
-        self.flatten = flatten
-        self.set_type = set_type
-
-        for i in range(np.shape(self.data)[0]):
-            if self.set_type == "spiking":
-                item = torch.FloatTensor(self.data[i])
-            else:
-                item = torch.permute(torch.FloatTensor(self.data[i]),(1,0))
-            
-            if self.flatten:
-                item=torch.flatten(item)
-            elif self.set_type == "spiking" and not self.flatten:
-                item = torch.permute(item, (1,0))
-
-            if self.set_type == "spiking":
-                if self.encoding=="rate":
-                    item = spikegen.rate(item,num_steps=num_steps)
-                elif self.encoding=="latency":
-                    item = spikegen.latency(item,num_steps=num_steps,normalize=True, linear=True)
-                else:
-                    raise Exception("Only rate and latency encodings allowed")
-
-            target=self.targets[i]
-            #print("TARGET:",target)
-            self.db.append([item,target])
-        
-        self.n_samples_per_class = self.get_class_counts()
-
-    def __len__(self):
-        return len(self.db)
-
-    def __getitem__(self, idx):
-        data = self.db[idx][0]
-        label = self.db[idx][1]
-        return data, label
-    
-    def get_class_counts(self):
-        class_weights = [0] * 2
-        for i in range(len(self.targets)):
-            class_weights[self.targets[i]] += 1
-
-        return class_weights
-    
-    def weights4balance(self):
-        """
-        :return: The class blanace weights for training
-        """
-        print("\nClass weight balancing for training.")
-
-
-        w = [len(self.db) / (self.n_classes * n_curr_class) for n_curr_class in self.n_samples_per_class]
-        for i, j in zip(w, [0, 1]):
-            print(f"{j}\t-> {i}")
-
-        return torch.tensor(w, dtype=torch.float32)
