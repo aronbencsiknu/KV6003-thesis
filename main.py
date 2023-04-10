@@ -8,6 +8,8 @@ from model import SNN, CSNN, CNN
 from options import Options
 from plots import RasterPlot, ManipulationPlot
 from metrics import Metrics
+from early_stopping import EarlyStopping
+import sys
 
 # external imports
 import torch
@@ -72,7 +74,8 @@ for batch_idx, (data, target) in enumerate(train_loader):
   input_size = np.shape(data)[2]
   break
 
-metrics = Metrics(opt.net_type, opt.set_type, opt.output_decoding, train_set, opt.device)
+metrics = Metrics(opt.net_type, opt.set_type, opt.output_decoding, train_set, opt.device, opt.num_steps)
+early_stopping = EarlyStopping(patience=10, verbose=True)
 
 if opt.net_type=="CSNN":
   model = CSNN(batch_size=opt.batch_size).to(opt.device)
@@ -82,10 +85,13 @@ elif opt.net_type=="CNN":
   model = CNN().to(opt.device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=opt.learning_rate, betas=(0.9, 0.999))
 
-def train(model,train_loader,optimizer,epoch, logging_index):
+def train(model,train_loader,optimizer,epoch, logging_index, stop_early):
   model.train()
   loss_val=0
   for batch_idx, (data, target) in enumerate(train_loader):
+      if stop_early:
+        break
+
       data=data.to(opt.device)
       target=target.to(opt.device)
 
@@ -105,18 +111,24 @@ def train(model,train_loader,optimizer,epoch, logging_index):
   loss_val /= len(train_loader)
   print("\nEpoch:\t\t",epoch,"/",opt.num_epochs)
   print("Train loss:\t%.2f" % loss_val)
-  
+
+ 
   return model, logging_index
 
 def forward_pass_eval(model,dataloader, logging_index, testing=False):
   model.eval()
-  test_loss = 0
+  loss = 0
   acc = 0
+  stop_early = False
 
   y_true = []
   y_pred = []
 
   label_names = ["No manipulation", "Manipulation"]
+
+  if testing:
+    print("loading best model...")
+    model.load_state_dict(torch.load('checkpoint.pt')) # load best model
 
   with torch.no_grad():
     for data, target in dataloader:
@@ -124,20 +136,20 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
       target=target.to(opt.device)
       #output = model(data, opt.num_steps)
       output = metrics.forward_pass(model, data, opt.num_steps)
-      acc_val = metrics.accuracy(output,target)
+      acc_current = metrics.accuracy(output,target)
 
-      test_loss_current = metrics.loss(output,target).item()
-      test_loss+=test_loss_current
-      acc+=acc_val
+      loss_current = metrics.loss(output,target).item()
+      loss+=loss_current
+      acc+=acc_current
 
       if opt.wandb_logging and not testing:
-        wandb.log({"Validation loss": test_loss_current, 
-                    "Validation Accuracy": acc_val,
+        wandb.log({"Validation loss": loss_current, 
+                    "Validation Accuracy": acc_current,
                     "Validation index": logging_index})
 
       elif opt.wandb_logging and testing:
-        wandb.log({"Test loss": test_loss_current, 
-                    "Test Accuracy": acc_val,
+        wandb.log({"Test loss": loss_current, 
+                    "Test Accuracy": acc_current,
                     "Test index": logging_index})
 
       predicted = metrics.return_predicted(output)
@@ -151,21 +163,28 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
   if testing:
     plot_confusion_matrix(y_pred, y_true)
 
-    test_loss /= len(test_loader)
+    loss /= len(test_loader)
     acc /= len(test_loader)
 
   else:
-    test_loss /= len(val_loader)
+    loss /= len(val_loader)
     acc /= len(val_loader)
+    
   
   if testing:
-    print("Test loss:\t%.4f" % test_loss)
+    print("Test loss:\t%.4f" % loss)
     print("Test acc:\t%.4f" % acc,"\n")
   else:
-    print("Val loss:\t%.4f" % test_loss)
+    print("Val loss:\t%.4f" % loss)
     print("Val acc:\t%.4f" % acc,"\n")
 
-    return logging_index
+    early_stopping(loss, model)
+
+    if early_stopping.early_stop:
+      print("Early stopping")
+      stop_early = True
+
+    return logging_index, stop_early
 
 def plot_confusion_matrix(y_pred, y_true):
     
@@ -185,15 +204,15 @@ def plot_confusion_matrix(y_pred, y_true):
 
 logging_index_train = 0
 logging_index_forward_eval = 0
+stop_early = False
 
 for epoch in range(1, opt.num_epochs+1):
 
-  model, logging_index_train = train(model,train_loader,optimizer,epoch, logging_index_train)
-  logging_index_forward_eval = forward_pass_eval(model, val_loader, logging_index_forward_eval)
+  model, logging_index_train = train(model,train_loader,optimizer,epoch, logging_index_train, stop_early)
+  logging_index_forward_eval, stop_early = forward_pass_eval(model, val_loader, logging_index_forward_eval)
 
 logging_index_forward_eval = 0
 forward_pass_eval(model, test_loader, logging_index_forward_eval, testing=True)
-
 
 RasterPlot(model, test_loader, opt.num_steps, opt.device)
 

@@ -31,7 +31,7 @@ class SNN(nn.Module):
             elif self.neuron_type == "Synaptic":
                 self.neurons.append(snn.Synaptic(alpha=alpha, beta=beta, threshold=0.2, spike_grad=spike_grad, learn_threshold=True))
         
-        self.dropout = nn.Dropout(p=0.5)
+        self.dropout = nn.Dropout(p=0.4)
 
     def forward(self, x, num_steps, time_first=False):
 
@@ -60,8 +60,7 @@ class SNN(nn.Module):
             for i in range(len(self.neurons)):
                 
                 spk = self.synapses[i](spk) # pass spikes through synapses
-
-                if i != 0 or i != len(self.neurons) - 1:
+                if i != 0 and i != len(self.neurons) - 1:
                     spk = self.dropout(spk) # apply dropout to hidden layers
 
                 if self.neuron_type == "Leaky":

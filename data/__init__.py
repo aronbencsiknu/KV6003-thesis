@@ -28,9 +28,9 @@ class LobsterData:
             reader = csv.reader(file)
             limiter = 0
             for row in reader:
-                if limiter < 30000:
-                    self.orderbook_data.append(row)
-                #self.orderbook_data.append(row)
+                """if limiter < 30000:
+                    self.orderbook_data.append(row)"""
+                self.orderbook_data.append(row)
                 
                 limiter += 1
 

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix 
 
 class Metrics():
-    def __init__(self, net_type, set_type, output_decoding, train_set, device):
+    def __init__(self, net_type, set_type, output_decoding, train_set, device, num_steps):
         self.net_type = net_type
         self.set_type = set_type
         self.output_decoding = output_decoding
@@ -18,7 +18,7 @@ class Metrics():
             #loss_fn = mse_count_loss(correct_rate=1, incorrect_rate=0.1)
             self.loss_fn = functional.loss.mse_count_loss(correct_rate=1, incorrect_rate=0.1)
         elif self.output_decoding=="latency":
-            self.loss_fn = functional.loss.mse_temporal_loss(target_is_time=False, on_target=0, off_target=opt.num_steps, tolerance=5, multi_spike=False)
+            self.loss_fn = functional.loss.mse_temporal_loss(target_is_time=False, on_target=0, off_target=num_steps, tolerance=5, multi_spike=False)
 
     def loss(self, output, y_true):
         if self.spiking:
