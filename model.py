@@ -1,18 +1,16 @@
 import torch.nn as nn
 import torch
 import snntorch as snn
-from snntorch import spikeplot as splt
-from snntorch import spikegen
-from snntorch import functional
 from snntorch import surrogate
-from snntorch import backprop
-import numpy as np
 
 
-# Define Network
-
+"""
+##############################################
+Feedforward SNN with leaky or synaptic neurons
+##############################################
+"""
 class SNN(nn.Module):
-    """Feedforward SNN with leaky or synaptic neurons"""
+    
     def __init__(self, input_size, hidden_size, output_size, beta=0.5, alpha=0.5, spike_grad=surrogate.fast_sigmoid(slope=25), neuron_type="Synaptic"):
         super().__init__()
 
@@ -20,30 +18,20 @@ class SNN(nn.Module):
         self.synapses = nn.ModuleList() # list of synapses
         self.neurons = nn.ModuleList() # list of neurons
 
-        # Input layer
-        self.synapses.append(nn.Linear(input_size, hidden_size[0], bias=False))
-        if self.neuron_type == "Leaky":
-            self.neurons.append(snn.Leaky(beta=beta, spike_grad=spike_grad))
-        elif self.neuron_type == "Synaptic":
-            self.neurons.append(snn.Synaptic(alpha=alpha, beta=beta, threshold=0.2, spike_grad=spike_grad, learn_threshold=True))
+        hidden_size.insert(0, input_size)
+        hidden_size.append(output_size)
+
+        size = hidden_size
         
-        # Hidden layers
-        for i in range(len(hidden_size) - 1):
-            self.synapses.append(nn.Linear(hidden_size[i], hidden_size[i + 1], bias=False))
+        for i in range(len(size) - 1):
+            self.synapses.append(nn.Linear(size[i], size[i + 1], bias=False))
             if self.neuron_type == "Leaky":
                 self.neurons.append(snn.Leaky(beta=beta, spike_grad=spike_grad))
+
             elif self.neuron_type == "Synaptic":
                 self.neurons.append(snn.Synaptic(alpha=alpha, beta=beta, threshold=0.2, spike_grad=spike_grad, learn_threshold=True))
-
-        # Output layer
-        self.synapses.append(nn.Linear(hidden_size[-1], output_size, bias=False))
-        if self.neuron_type == "Leaky":
-            self.neurons.append(snn.Leaky(beta=beta, spike_grad=spike_grad))
-        elif self.neuron_type == "Synaptic":
-            self.neurons.append(snn.Synaptic(alpha=alpha, beta=beta, threshold=0.2, spike_grad=spike_grad, learn_threshold=True))
         
         self.dropout = nn.Dropout(p=0.5)
-        self.num_hidden = len(hidden_size)
 
     def forward(self, x, num_steps, time_first=False):
 
@@ -91,9 +79,14 @@ class SNN(nn.Module):
             spk_recs[i] = torch.stack(spk_recs[i], dim=0)
         return [spk_recs, mem_recs]
         #return torch.stack(spk_rec, dim=0), torch.stack(mem_rec, dim=0)
-    
+
+
+"""
+################################################
+Convolutional SNN with leaky or synaptic neurons
+################################################
+"""
 class CSNN(nn.Module):
-    """Convolutional Spiking Neural Network with leaky neurons"""
     def __init__(self, batch_size, hidden_size=[4,32,64], beta=0.5, spike_grad=surrogate.fast_sigmoid(slope=25), neuron_type="Leaky"):
         super(CSNN, self).__init__()
 
@@ -185,8 +178,12 @@ class CSNN(nn.Module):
         return [spk_recs, mem_recs]
     
 
+"""
+###############################
+Conventional CNN for comparison
+###############################
+"""
 class CNN(nn.Module):
-    """Convenrional CNN for comparison"""
     def __init__(self):
         super(CNN, self).__init__()
         self.conv1 = nn.Conv1d(in_channels=4, out_channels=16, kernel_size=3, padding=1)

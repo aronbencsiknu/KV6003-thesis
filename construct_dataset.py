@@ -13,7 +13,7 @@ class ManipulatedDataset:
 
         # manipulation characteristics
         self.m_len = 5
-        self.price_increase = 8 #bps
+        self.price_increase = 30 #bps
         self.volume_increase = 4 #times
         self.epsilon = 0.08 # probability of manipulation
 
