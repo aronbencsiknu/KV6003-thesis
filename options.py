@@ -24,6 +24,7 @@ class Options(object):
         self.argparser.add_argument("--window_length", type=int, default=20, help="Length of the window to use for the dataset")
         self.argparser.add_argument("--window_overlap", type=float, default=0, help="Overlap of windows in the dataset")
         self.argparser.add_argument("--train_method", type=str, default="multiclass", choices=["multiclass", "oneclass"], help="Method to use for training (multiclass, oneclass)")
+        self.argparser.add_argument("-i", "--inject_manipulations", action='store_true', help="Enable manipulattion injection")
 
         self.initialized = True
 

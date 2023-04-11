@@ -366,6 +366,10 @@ class CSNNGaussian(nn.Module):
     def __init__(self, batch_size, hidden_size=[4,32,64], beta=0.5, spike_grad=surrogate.fast_sigmoid(slope=25), neuron_type="Leaky"):
         super(CSNNGaussian, self).__init__()
         self.hidden_size = hidden_size
+        self.batch_size = batch_size
+        self.neuron_type = neuron_type
+        self.beta = beta
+        self.spike_grad = spike_grad
 
         self.feature_extractor_body = FeatureExtractorBody(batch_size, hidden_size, beta, spike_grad, neuron_type)
         self.classification_head = ClassificationHead(batch_size, self.feature_extractor_body.synapses, self.feature_extractor_body.neurons, self.feature_extractor_body.pools, hidden_size, beta, spike_grad, neuron_type)
@@ -401,6 +405,9 @@ class CSNNGaussian(nn.Module):
     def unfreeze_body(self):
         for param in self.feature_extractor_body.parameters():
             param.requires_grad = True
+
+    def reset_head(self):
+        self.classification_head = ClassificationHead(self.batch_size, self.feature_extractor_body.synapses, self.feature_extractor_body.neurons, self.feature_extractor_body.pools, self.hidden_size, self.beta, self.spike_grad, self.neuron_type)
 
     def generate_gaussian_feature(self, batch_size, num_steps):
 

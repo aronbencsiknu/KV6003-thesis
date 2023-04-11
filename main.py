@@ -42,12 +42,22 @@ if opt.wandb_logging:
 
 unmanipulated_data = LobsterData()
 
-#ManipulationPlot(manipulated_data)
+if opt.train_method == "multiclass":
+  X, y = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, True, opt.window_length, opt.window_overlap)
+  X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-X, y = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, True, opt.window_length, opt.window_overlap)
+  X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1, random_state=42)
+else:
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1, random_state=42)
+  X_train, y_train = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, False, opt.window_length, opt.window_overlap)
+  X_test, y_test = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, True, opt.window_length, opt.window_overlap)
+
+
+  X_train, _, y_train, _ = train_test_split(X_train, y_train, test_size=0.2, random_state=42)
+  #X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1, random_state=42)
+
+  X_temp, X_test, y_temp, y_test = train_test_split(X_test, y_test, test_size=0.2, random_state=42)
+  _, X_val, _, y_val = train_test_split(X_temp, y_temp, test_size=0.1, random_state=42)
 
 train_set = CustomDataset(data=X_train, targets=y_train, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=opt.flatten_data, set_type=opt.set_type)
 test_set = CustomDataset(data=X_test, targets=y_test, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=opt.flatten_data, set_type=opt.set_type)
@@ -80,6 +90,7 @@ if opt.net_type=="CSNN":
   if opt.train_method == "oneclass":
     model.load_state_dict(torch.load('checkpoint.pt')) # load best model
     model.freeze_body()
+    model.reset_head()
 elif opt.net_type=="SNN":
   model = SNN(input_size=input_size, hidden_size=opt.hidden_size, output_size=2).to(opt.device)
 elif opt.net_type=="CNN":
@@ -142,13 +153,13 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
       data=data.to(opt.device)
       target=target.to(opt.device)
 
-      if opt.train_method == "oneclass" and batch_idx % 2 == 0:
+      """if opt.train_method == "oneclass" and batch_idx % 2 == 0:
         data = model.generate_gaussian_feature(opt.batch_size, opt.num_steps).to(opt.device)
         target = torch.ones(opt.batch_size, dtype=torch.long).to(opt.device)
         output = metrics.forward_pass(model, data, opt.num_steps, gaussian=True)
 
-      else:
-        output = metrics.forward_pass(model, data, opt.num_steps)
+      else:"""
+      output = metrics.forward_pass(model, data, opt.num_steps)
 
       #output = metrics.forward_pass(model, data, opt.num_steps)
       acc_current = metrics.accuracy(output,target)

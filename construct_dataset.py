@@ -173,7 +173,7 @@ class ExtractFeatures:
 
 
 class LabelledWindows:
-    def __init__(self, data, manipulation_indices, window_size, window_overlap, manipulated_data):
+    def __init__(self, data, window_size, window_overlap, manipulation_indices, manipulated_data):
         self.manipulation_indices = manipulation_indices
         self.overlap = window_overlap
         self.windows = self.slice_data_to_windows(data, window_size, self.overlap)
@@ -289,113 +289,15 @@ def prepare_data(data, inject, window_length, window_overlap):
         manipulated_data = ManipulatedDataset(data)
         data = manipulated_data.data
 
+        manipulation_indeces = manipulated_data.manipulation_indeces
+    else:
+        manipulation_indeces = None
+
     extracted_features = ExtractFeatures(data)
     input_features = extracted_features.features
 
-    labelled_windows = LabelledWindows(input_features, manipulated_data.manipulation_indeces, window_length, window_overlap, inject)
+    labelled_windows = LabelledWindows(input_features, window_length, window_overlap, manipulation_indeces, inject)
     X = labelled_windows.windows
     y = labelled_windows.labels
 
     return X, y
-
-class SpikingDataset(Dataset):
-    def __init__(self, data, targets, num_steps, encoding="rate", flatten=True):
-        self.data=data.copy()
-        self.targets=targets.copy()
-        self.encoding=encoding
-        self.db=[]
-        self.n_classes = 2
-        self.flatten = flatten
-
-        for i in range(np.shape(self.data)[0]):
-            item = torch.FloatTensor(self.data[i])
-            if self.flatten:
-                item=torch.flatten(item)
-            else:
-                item = torch.permute(item, (1,0))
-            if self.encoding=="rate":
-                item = spikegen.rate(item,num_steps=num_steps)
-            elif self.encoding=="latency":
-                item = spikegen.latency(item,num_steps=num_steps,normalize=True, linear=True)
-            else:
-                raise Exception("Only rate and latency encodings allowed") 
-
-            target=self.targets[i]
-            #print("TARGET:",target)
-            self.db.append([item,target])
-        
-        self.n_samples_per_class = self.get_class_counts()
-
-    def __len__(self):
-        return len(self.db)
-
-    def __getitem__(self, idx):
-        data = self.db[idx][0]
-        label = self.db[idx][1]
-        return data, label
-    
-    def get_class_counts(self):
-        class_weights = [0] * 2
-        for i in range(len(self.targets)):
-            class_weights[self.targets[i]] += 1
-
-        return class_weights
-    
-    def weights4balance(self):
-        """
-        :return: The class blanace weights for training
-        """
-        print("\nClass weight balancing for training.")
-
-
-        w = [len(self.db) / (self.n_classes * n_curr_class) for n_curr_class in self.n_samples_per_class]
-        for i, j in zip(w, [0, 1]):
-            print(f"{j}\t-> {i}")
-
-        return torch.tensor(w, dtype=torch.float32)
-    
-class NonSpikingDataset(Dataset):
-    def __init__(self, data, targets):
-        self.data=data.copy()
-        self.targets=targets.copy()
-        self.db=[]
-        self.n_classes = 2
-
-        for i in range(np.shape(self.data)[0]):
-            item = torch.permute(torch.FloatTensor(self.data[i]),(1,0))
-
-            target=self.targets[i]
-            #print("TARGET:",target)
-            self.db.append([item,target])
-        
-        self.n_samples_per_class = self.get_class_counts()
-        print(self.n_samples_per_class)
-
-    def __len__(self):
-        return len(self.db)
-
-    def __getitem__(self, idx):
-        data = self.db[idx][0]
-        label = self.db[idx][1]
-        return data, label
-    
-    def get_class_counts(self):
-        class_weights = [0] * 2
-        for i in range(len(self.targets)):
-            class_weights[self.targets[i]] += 1
-
-        return class_weights
-    
-    def weights4balance(self):
-        """
-        :return: The class blanace weights for training
-        """
-        print("\nClass weight balancing for training.")
-
-
-        w = [len(self.db) / (self.n_classes * n_curr_class) for n_curr_class in self.n_samples_per_class]
-        for i, j in zip(w, [0, 1]):
-            print(f"{j}\t-> {i}")
-
-        return torch.tensor(w, dtype=torch.float32)
-    
