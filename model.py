@@ -360,7 +360,7 @@ class CSNNGaussian(nn.Module):
         self.feature_extractor_body = FeatureExtractorBody(batch_size, hidden_size, beta, spike_grad, neuron_type)
         self.classification_head = ClassificationHead(batch_size, self.feature_extractor_body.synapses, self.feature_extractor_body.neurons, self.feature_extractor_body.pools, hidden_size, beta, spike_grad, neuron_type)
 
-    def forward(self, x, num_steps, time_first=False):
+    def forward(self, x, num_steps, time_first=False, guassian=False):
 
         if not time_first:
           x=x.transpose(1, 0) # convert to time first, batch second
@@ -370,7 +370,8 @@ class CSNNGaussian(nn.Module):
 
         for step in range(num_steps):
             spikes = x[step]
-            spikes, spk_recs, mem_recs = self.feature_extractor_body(spikes, membranes, syns, mem_recs, spk_recs)
+            if not guassian:
+                spikes, spk_recs, mem_recs = self.feature_extractor_body(spikes, membranes, syns, mem_recs, spk_recs)
             spk_recs, mem_recs = self.classification_head(spikes, membranes, syns, mem_recs, spk_recs)
 
         for i in range(len(spk_recs)):
@@ -378,3 +379,11 @@ class CSNNGaussian(nn.Module):
             spk_recs[i] = torch.stack(spk_recs[i], dim=0)
 
         return [spk_recs, mem_recs]
+    
+    def freeze_body(self):
+        for param in self.feature_extractor_body.parameters():
+            param.requires_grad = False
+
+    def unfreeze_body(self):
+        for param in self.feature_extractor_body.parameters():
+            param.requires_grad = True
