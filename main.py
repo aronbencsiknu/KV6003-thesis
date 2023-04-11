@@ -6,7 +6,7 @@ from construct_dataset import LabelledWindows
 from construct_dataset import CustomDataset"""
 import construct_dataset
 from construct_dataset import CustomDataset
-from model import SNN, CSNN, CNN
+from model import SNN, CSNN, CNN, CSNNGaussian
 from options import Options
 from plots import RasterPlot, ManipulationPlot
 from metrics import Metrics
@@ -76,7 +76,7 @@ metrics = Metrics(opt.net_type, opt.set_type, opt.output_decoding, train_set, op
 early_stopping = EarlyStopping(patience=10, verbose=True)
 
 if opt.net_type=="CSNN":
-  model = CSNN(batch_size=opt.batch_size).to(opt.device)
+  model = CSNNGaussian(batch_size=opt.batch_size).to(opt.device)
 elif opt.net_type=="SNN":
   model = SNN(input_size=input_size, hidden_size=opt.hidden_size, output_size=2).to(opt.device)
 elif opt.net_type=="CNN":
