@@ -115,7 +115,7 @@ class CSNN(nn.Module):
 
         self.dropout = nn.Dropout(p=0.3)
         
-    def forward(self, x, num_steps, time_first=False, input_gaussian=False):
+    def forward(self, x, num_steps, time_first=False):
 
         if not time_first:
           x=x.transpose(1, 0) # convert to time first, batch second
@@ -138,25 +138,23 @@ class CSNN(nn.Module):
 
         for step in range(num_steps):
             spikes = x[step] # input spikes at t=step
+            for i in range(len(self.hidden_size) - 1):
+                
+                current = self.synapses[i](spikes) # pass spikes through synapses
+                current = self.pools[i](current) # pooling currents
 
-            if not input_gaussian:
-                for i in range(len(self.hidden_size) - 1):
-                    
-                    current = self.synapses[i](spikes) # pass spikes through synapses
-                    current = self.pools[i](current) # pooling currents
+                if self.neuron_type == "Leaky":
+                    spikes, membranes[i] = self.neurons[i](current, membranes[i])
+                
+                elif self.neuron_type == "Synaptic":
+                    spikes, syns[i], membranes[i] = self.neurons[i](current, syns[i], membranes[i])
 
-                    if self.neuron_type == "Leaky":
-                        spikes, membranes[i] = self.neurons[i](current, membranes[i])
-                    
-                    elif self.neuron_type == "Synaptic":
-                        spikes, syns[i], membranes[i] = self.neurons[i](current, syns[i], membranes[i])
+                # record output layer membrane potentials and spikes
+                mem_recs[i].append(torch.flatten(membranes[i].clone(), start_dim=1))
+                spk_recs[i].append(torch.flatten(spikes.clone(), start_dim=1))
 
-                    # record output layer membrane potentials and spikes
-                    mem_recs[i].append(torch.flatten(membranes[i].clone(), start_dim=1))
-                    spk_recs[i].append(torch.flatten(spikes.clone(), start_dim=1))
-
-                spikes = self.adaptive_pool(spikes)
-                spikes = torch.flatten(spikes, start_dim=1)
+            spikes = self.adaptive_pool(spikes)
+            spikes = torch.flatten(spikes, start_dim=1)
 
             for i in range(len(self.hidden_size) - 1 , len(self.neurons)):
 
@@ -253,25 +251,9 @@ class FeatureExtractorBody(nn.Module):
             self.pools.append(nn.MaxPool1d(3, stride=2))
             self.neurons.append(snn.Leaky(beta=beta, spike_grad=spike_grad, learn_threshold=True))
 
-    def init_neurons(self):
-        membranes = [] # initial membrane potentials
-        syns = [] # initial synapse outputs
+        self.adaptive_pool = nn.AdaptiveAvgPool1d(2)
 
-        mem_recs = [[] for _ in range(len(self.neurons))] # list of membrane potentials over steps at output layer
-        spk_recs = [[] for _ in range(len(self.neurons))] # list of spikes over steps at output layer
-        syn_recs = [[] for _ in range(len(self.neurons))] # list of synapse outputs over steps at output layer
-
-        for i in range(len(self.neurons)):
-            if self.neuron_type == "Leaky":
-                membranes.append(self.neurons[i].init_leaky()) # initialize membrane potentials
-            elif self.neuron_type == "Synaptic":
-                temp = self.neurons[i].init_synaptic()
-                syns.append(temp[0])
-                membranes.append(temp[1])
-
-        return [membranes, syns, mem_recs, spk_recs, syn_recs]
-
-    def forward(self, x, membranes, syns, mem_recs, spk_recs):
+    def forward(self, x, membranes, mem_recs, spk_recs):
         spikes = x # input spikes
 
         for i in range(len(self.hidden_size) - 1):
@@ -282,15 +264,36 @@ class FeatureExtractorBody(nn.Module):
             if self.neuron_type == "Leaky":
                 spikes, membranes[i] = self.neurons[i](current, membranes[i])
             
-            elif self.neuron_type == "Synaptic":
-                spikes, syns[i], membranes[i] = self.neurons[i](current, syns[i], membranes[i])
+            """elif self.neuron_type == "Synaptic":
+                spikes, syns[i], membranes[i] = self.neurons[i](current, syns[i], membranes[i])"""
 
             # record output layer membrane potentials and spikes
             mem_recs[i].append(torch.flatten(membranes[i].clone(), start_dim=1))
             spk_recs[i].append(torch.flatten(spikes.clone(), start_dim=1))
 
-        return [spikes, spk_recs, mem_recs]
+        spikes = self.adaptive_pool(spikes)
+        spikes = torch.flatten(spikes, start_dim=1)
+
+        return [spikes, membranes, spk_recs, mem_recs]
     
+    def init_neurons(self):
+        membranes = [] # initial membrane potentials
+        syns = [] # initial synapse outputs
+
+        mem_recs = [[] for _ in range(len(self.neurons))] # list of membrane potentials over steps at output layer
+        spk_recs = [[] for _ in range(len(self.neurons))] # list of spikes over steps at output layer
+        syn_recs = [[] for _ in range(len(self.neurons))] # list of synapse outputs over steps at output layer
+        for i in range(len(self.neurons)):
+            if self.neuron_type == "Leaky":
+                membranes.append(self.neurons[i].init_leaky()) # initialize membrane potentials
+            elif self.neuron_type == "Synaptic":
+                temp = self.neurons[i].init_synaptic()
+                syns.append(temp[0])
+                membranes.append(temp[1])
+
+        return [membranes, mem_recs, spk_recs]
+
+
 class ClassificationHead(nn.Module):
     def __init__(self, batch_size, synapses, neurons, pools, hidden_size=[4,32,64], beta=0.5, spike_grad=surrogate.fast_sigmoid(slope=25), neuron_type="Leaky"):
         super(ClassificationHead, self).__init__()
@@ -299,11 +302,14 @@ class ClassificationHead(nn.Module):
         self.neuron_type = neuron_type
         self.hidden_size = hidden_size
 
-        self.neurons = neurons # list of neurons
+        """self.neurons = neurons # list of neurons
         self.pools = pools # list of max pooling layers
-        self.synapses = synapses # list of synapses
+        self.synapses = synapses # list of synapses"""
+        self.neurons = nn.ModuleList() # list of neurons
+        self.pools = nn.ModuleList() # list of max pooling layers
+        self.synapses = nn.ModuleList() # list of synapses
 
-        self.adaptive_pool = nn.AdaptiveAvgPool1d(2)
+        #self.adaptive_pool = nn.AdaptiveAvgPool1d(2)
 
         self.synapses.append(nn.Linear(2*hidden_size[-1], 256))
         self.neurons.append(snn.Leaky(beta=beta, spike_grad=spike_grad, learn_threshold=True))
@@ -314,26 +320,29 @@ class ClassificationHead(nn.Module):
 
         self.dropout = nn.Dropout(p=0.3)
 
-    def forward(self, spikes, membranes, syns, mem_recs, spk_recs):
 
-        spikes = self.adaptive_pool(spikes)
-        spikes = torch.flatten(spikes, start_dim=1)
+    def forward(self, spikes, membranes, mem_recs, spk_recs, gaussian=False):
 
-        for i in range(len(self.hidden_size) - 1 , len(self.neurons)):
+        #spikes = self.adaptive_pool(spikes)
+        #spikes = torch.flatten(spikes, start_dim=1)
+        #for i in range(len(self.hidden_size) - 1 , len(self.neurons)):
+        
+        for i in range(len(self.neurons)):
 
             current = self.synapses[i](spikes)
 
             if self.neuron_type == "Leaky":
                 spikes, membranes[i] = self.neurons[i](current, membranes[i])
             
-            elif self.neuron_type == "Synaptic":
-                spikes, syns[i], membranes[i] = self.neurons[i](current, syns[i], membranes[i])
+            """elif self.neuron_type == "Synaptic":
+                spikes, syns[i], membranes[i] = self.neurons[i](current, syns[i], membranes[i])"""
 
             mem_recs[i].append(membranes[i].clone())
             spk_recs[i].append(spikes.clone())
 
-        return [spk_recs, mem_recs]
+        return [membranes, spk_recs, mem_recs]
     
+
     def init_neurons(self):
         membranes = [] # initial membrane potentials
         syns = [] # initial synapse outputs
@@ -341,7 +350,6 @@ class ClassificationHead(nn.Module):
         mem_recs = [[] for _ in range(len(self.neurons))] # list of membrane potentials over steps at output layer
         spk_recs = [[] for _ in range(len(self.neurons))] # list of spikes over steps at output layer
         syn_recs = [[] for _ in range(len(self.neurons))] # list of synapse outputs over steps at output layer
-
 
         for i in range(len(self.neurons)):
             if self.neuron_type == "Leaky":
@@ -351,34 +359,40 @@ class ClassificationHead(nn.Module):
                 syns.append(temp[0])
                 membranes.append(temp[1])
 
-        return [membranes, syns, mem_recs, spk_recs, syn_recs]
+        return [membranes, mem_recs, spk_recs]
+
 
 class CSNNGaussian(nn.Module):
     def __init__(self, batch_size, hidden_size=[4,32,64], beta=0.5, spike_grad=surrogate.fast_sigmoid(slope=25), neuron_type="Leaky"):
         super(CSNNGaussian, self).__init__()
+        self.hidden_size = hidden_size
 
         self.feature_extractor_body = FeatureExtractorBody(batch_size, hidden_size, beta, spike_grad, neuron_type)
         self.classification_head = ClassificationHead(batch_size, self.feature_extractor_body.synapses, self.feature_extractor_body.neurons, self.feature_extractor_body.pools, hidden_size, beta, spike_grad, neuron_type)
 
-    def forward(self, x, num_steps, time_first=False, guassian=False):
+    def forward(self, x, num_steps, time_first=False, gaussian=False):
 
         if not time_first:
           x=x.transpose(1, 0) # convert to time first, batch second
         
-        membranes, sny, mem_recs, spk_recs, syn_recs = self.feature_extractor_body.init_neurons()
-        membranes, syns, mem_recs, spk_recs, syn_recs = self.classification_head.init_neurons()
+        # initialize neurons
+        if not gaussian:
+            membranes_FE, mem_recs_FE, spk_recs_FE = self.feature_extractor_body.init_neurons()
+
+        membranes_FC, mem_recs_FC, spk_recs_FC = self.classification_head.init_neurons()
 
         for step in range(num_steps):
             spikes = x[step]
-            if not guassian:
-                spikes, spk_recs, mem_recs = self.feature_extractor_body(spikes, membranes, syns, mem_recs, spk_recs)
-            spk_recs, mem_recs = self.classification_head(spikes, membranes, syns, mem_recs, spk_recs)
+            if not gaussian:
+                spikes, membranes_FE, spk_recs_FE, mem_recs_FE = self.feature_extractor_body(spikes, membranes_FE, mem_recs_FE, spk_recs_FE)
 
-        for i in range(len(spk_recs)):
-            mem_recs[i] = torch.stack(mem_recs[i], dim=0)
-            spk_recs[i] = torch.stack(spk_recs[i], dim=0)
+            membranes_FC, spk_recs_FC, mem_recs_FC = self.classification_head(spikes, membranes_FC, mem_recs_FC, spk_recs_FC, gaussian=gaussian)
 
-        return [spk_recs, mem_recs]
+        for i in range(len(spk_recs_FC)):
+            mem_recs_FC[i] = torch.stack(mem_recs_FC[i], dim=0)
+            spk_recs_FC[i] = torch.stack(spk_recs_FC[i], dim=0)
+
+        return [spk_recs_FC, mem_recs_FC]
     
     def freeze_body(self):
         for param in self.feature_extractor_body.parameters():
@@ -387,3 +401,23 @@ class CSNNGaussian(nn.Module):
     def unfreeze_body(self):
         for param in self.feature_extractor_body.parameters():
             param.requires_grad = True
+
+    def generate_gaussian_feature(self, batch_size, num_steps):
+
+        gaussian_features = []
+
+        for i in range(batch_size):
+            gaussian_feature = []
+            for j in range(num_steps):
+                gaussian_dist = np.random.normal(size=(2 * self.hidden_size[-1]))
+                max = np.asarray(gaussian_dist).max()
+                min = np.asarray(gaussian_dist).min()
+
+                for i in range(len(gaussian_dist)):
+                    # normalizing values as: value' = (value - min) / (max - min)
+                    gaussian_dist[i] = (gaussian_dist[i] - min) / (max - min)
+
+                gaussian_feature.append(gaussian_dist)
+            gaussian_features.append(gaussian_feature)
+            
+        return torch.FloatTensor(gaussian_features)

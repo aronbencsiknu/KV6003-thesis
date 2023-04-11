@@ -53,8 +53,10 @@ class Metrics():
 
             return predicted
         
-    def forward_pass(self, net, x, num_steps):
+    def forward_pass(self, net, x, num_steps, gaussian=False):
         if self.net_type=="CSNN":
+            if gaussian:
+                return net(x, num_steps, gaussian=True)
             return net(x, num_steps)
         elif self.net_type=="SNN":
             return net(x, num_steps)

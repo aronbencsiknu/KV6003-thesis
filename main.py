@@ -77,11 +77,15 @@ early_stopping = EarlyStopping(patience=10, verbose=True)
 
 if opt.net_type=="CSNN":
   model = CSNNGaussian(batch_size=opt.batch_size).to(opt.device)
+  if opt.train_method == "oneclass":
+    model.load_state_dict(torch.load('checkpoint.pt')) # load best model
+    model.freeze_body()
 elif opt.net_type=="SNN":
   model = SNN(input_size=input_size, hidden_size=opt.hidden_size, output_size=2).to(opt.device)
 elif opt.net_type=="CNN":
   model = CNN().to(opt.device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=opt.learning_rate, betas=(0.9, 0.999))
+
 
 def train(model,train_loader,optimizer,epoch, logging_index, stop_early):
   model.train()
@@ -93,7 +97,13 @@ def train(model,train_loader,optimizer,epoch, logging_index, stop_early):
       data=data.to(opt.device)
       target=target.to(opt.device)
 
-      output = metrics.forward_pass(model, data, opt.num_steps)
+      if opt.train_method == "oneclass" and batch_idx % 2 == 0:
+        data = model.generate_gaussian_feature(opt.batch_size, opt.num_steps).to(opt.device)
+        target = torch.ones(opt.batch_size, dtype=torch.long).to(opt.device)
+        output = metrics.forward_pass(model, data, opt.num_steps, gaussian=True)
+
+      else:
+        output = metrics.forward_pass(model, data, opt.num_steps)
 
       loss = metrics.loss(output,target)
       optimizer.zero_grad()
@@ -128,11 +138,19 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
     model.load_state_dict(torch.load('checkpoint.pt')) # load best model
 
   with torch.no_grad():
-    for data, target in dataloader:
+    for batch_idx, (data, target) in enumerate(dataloader):
       data=data.to(opt.device)
       target=target.to(opt.device)
-      #output = model(data, opt.num_steps)
-      output = metrics.forward_pass(model, data, opt.num_steps)
+
+      if opt.train_method == "oneclass" and batch_idx % 2 == 0:
+        data = model.generate_gaussian_feature(opt.batch_size, opt.num_steps).to(opt.device)
+        target = torch.ones(opt.batch_size, dtype=torch.long).to(opt.device)
+        output = metrics.forward_pass(model, data, opt.num_steps, gaussian=True)
+
+      else:
+        output = metrics.forward_pass(model, data, opt.num_steps)
+
+      #output = metrics.forward_pass(model, data, opt.num_steps)
       acc_current = metrics.accuracy(output,target)
 
       loss_current = metrics.loss(output,target).item()
