@@ -2,7 +2,9 @@ import torch.nn as nn
 import torch
 import snntorch as snn
 from snntorch import surrogate
+from snntorch import spikegen
 import numpy as np
+import random
 
 
 """
@@ -111,7 +113,7 @@ class CSNN(nn.Module):
 
         self.synapses.append(nn.Linear(256, 2))
         self.neurons.append(snn.Leaky(beta=beta, spike_grad=spike_grad, learn_threshold=True))
-        self.lsm = nn.LogSoftmax(dim=1)
+        #self.lsm = nn.LogSoftmax(dim=1)
 
         self.dropout = nn.Dropout(p=0.3)
         
@@ -178,7 +180,7 @@ class CSNN(nn.Module):
 
         return [spk_recs, mem_recs]
     
-    def generate_gaussian_feature(self):
+    """def generate_gaussian_feature(self):
         gaussian_dist = np.random.normal(size=(self.batch_size, 2 * self.hidden_size[-1]))
         max = np.asarray(gaussian_dist[i]).max()
         min = np.asarray(gaussian_dist[i]).min()
@@ -187,7 +189,7 @@ class CSNN(nn.Module):
             # normalizing values as: value' = (value - min) / (max - min)
             gaussian_dist[i] = (gaussian_dist[i] - min) / (max - min)
 
-        return gaussian_dist
+        return gaussian_dist"""
 
 """
 ###############################
@@ -416,7 +418,7 @@ class CSNNGaussian(nn.Module):
         for i in range(batch_size):
             gaussian_feature = []
             for j in range(num_steps):
-                gaussian_dist = np.random.normal(size=(2 * self.hidden_size[-1]))
+                gaussian_dist = [random.choice([1, 0]) for _ in range(2 * self.hidden_size[-1])]
                 max = np.asarray(gaussian_dist).max()
                 min = np.asarray(gaussian_dist).min()
 
