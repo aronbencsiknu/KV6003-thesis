@@ -52,9 +52,7 @@ class CUBAPopulation():
         self.neurons = []
 
         self.gains = self.generate_gain(population_size, -0.3, 0.3, tau, dt, T, Vth)
-        self.create_neurons()
-
-        
+        self.create_neurons()       
     
     def create_neurons(self):
         for i in range(0, self.population_size):
@@ -130,7 +128,7 @@ class CUBALayer():
             self.populations[i].reset_neurons()
 
 
-def simulate_neuron(spike_times, cuba_layer, Iext_mean=1, dt=0.001, T=0.1):
+"""def simulate_neuron(spike_times, cuba_layer, Iext_mean=1, dt=0.001, T=0.1):
     # Define time vector and input current
     t = np.arange(0, T, dt)
     Iext = np.full(len(t), Iext_mean)
@@ -168,4 +166,4 @@ for i in range(10):
 plt.gca().invert_yaxis()
 tick_locs = np.arange(0, len(x_labels), 10)
 plt.xticks(tick_locs, x_labels[::10])
-plt.show()
+plt.show()"""
