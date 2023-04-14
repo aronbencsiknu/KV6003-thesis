@@ -105,10 +105,10 @@ class ExtractFeatures:
         #self.features.append(self.original_ask_volume)
 
         # dPt/d_t and dV_t/d_t
-        self.features.append(self.take_derivative(self.original_bid_price))
+        #self.features.append(self.take_derivative(self.original_bid_price))
         #self.features.append(self.take_derivative(self.original_ask_price))
 
-        self.features.append(self.take_derivative(self.original_bid_volume))
+        #self.features.append(self.take_derivative(self.original_bid_volume))
         #self.features.append(self.take_derivative(self.original_ask_volume))
 
         """# dPhat_t/d_t and dVhat_t/d_t
@@ -223,7 +223,7 @@ class LabelledWindows:
     
     
 class CustomDataset(Dataset):
-    def __init__(self, data, targets, num_steps, encoding="rate", flatten=True, set_type="spiking"):
+    def __init__(self, data, targets, num_steps, window_length, encoding="rate", flatten=True, set_type="spiking"):
         self.data=data.copy()
         self.targets=targets.copy()
         self.db=[]
@@ -231,15 +231,20 @@ class CustomDataset(Dataset):
         self.encoding=encoding
         self.flatten = flatten
         self.set_type = set_type
+        self.window_length = window_length
 
         if self.encoding == "population":
-            self.receptive_encoder = CUBALayer()
+            self.receptive_encoder = CUBALayer(feature_dimensionality=2, population_size=5)
 
+        # encode data to spikes using the defined encoding method
         for i in range(np.shape(self.data)[0]):
+
+
             if self.set_type == "spiking":
                 item = torch.FloatTensor(self.data[i])
             else:
                 item = torch.permute(torch.FloatTensor(self.data[i]),(1,0))
+            
             
             if self.flatten:
                 item=torch.flatten(item)
@@ -252,12 +257,13 @@ class CustomDataset(Dataset):
                 elif self.encoding=="latency":
                     item = spikegen.latency(item,num_steps=num_steps,normalize=True, linear=True)
                 elif self.encoding=="population":
-                    item = self.receptive_encoder(item)
+
+                    item = self.receptive_encoder.encode_window(item, self.window_length)
+                    item = torch.Tensor(item)
                 else:
                     raise Exception("Only rate,  latency and population encodings allowed")
 
             target=self.targets[i]
-            #print("TARGET:",target)
             self.db.append([item,target])
         
         self.n_samples_per_class = self.get_class_counts()

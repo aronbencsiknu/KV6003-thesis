@@ -102,9 +102,9 @@ class CUBAPopulation():
 
 
 class CUBALayer():
-    def __init__(self, sample_size, population_size, tau=0.8, g=-5.0, Vth=1, dt=0.01, T=0.1):
+    def __init__(self, feature_dimensionality, population_size, tau=0.8, g=-5.0, Vth=1, dt=0.01, T=0.1):
 
-        self.sample_size = sample_size # number of populations
+        self.feature_dimensionality = feature_dimensionality # number of populations
         self.population_size = population_size # number of neurons in each population
         self.tau = tau
         self.g = g
@@ -114,7 +114,7 @@ class CUBALayer():
 
         self.populations = []
 
-        for i in range(self.sample_size):
+        for i in range(self.feature_dimensionality):
             self.populations.append(CUBAPopulation(population_size, tau, g, Vth, dt, T))
             
 
@@ -123,7 +123,7 @@ class CUBALayer():
         spikes_at_t = []
 
         # loop through features and forward the respective neural populations
-        for i in range(0, self.sample_size):
+        for i in range(0, self.feature_dimensionality):
 
             # get spikes at time t form population i from feature i in Iext 
             population_spikes_at_t = self.populations[i].forward(Iext[i], index)
@@ -134,7 +134,8 @@ class CUBALayer():
         return spikes_at_t
     
     def encode_window(self, Iext, window_size):
-
+        Iext = np.swapaxes(Iext,1,0)
+        timesteps = int(self.T/self.dt)
         spk_rec = []
         #window_size = 20 # CHANGE
         for i in range(window_size):
@@ -148,13 +149,13 @@ class CUBALayer():
         return spk_rec
 
     def reset_neurons(self):
-        for i in range(self.sample_size):
+        for i in range(self.feature_dimensionality):
             self.populations[i].reset_neurons()
 
 
 #############################################################
 
-window_size = 20
+"""window_size = 20
 feature_dimensionality = 2
 population_size = 10
 
@@ -169,23 +170,7 @@ for i in range(window_size):
         random_num = np.random.normal()
         Iext[j].append(random_num)
         
-#Iext = np.transpose(Iext,)
 Iext = np.swapaxes(Iext,1,0)
-
-"""print(np.asarray(Iext)[0].shape)
-
-
-#spk_rec =[[] for _ in range(feature_dimensionality * population_size)]
-spk_rec = []
-
-for i in range(window_size):
-    for j in range(timesteps):
-        #print(i, j)
-        temp = cuba_layer.forward(Iext[i])
-        spk_rec.append(temp)
-            
-
-    cuba_layer.reset_neurons()"""
 
 spk_rec = cuba_layer.encode_window(Iext, window_size)
 
@@ -202,5 +187,5 @@ spk_rec = torch.tensor(spk_rec)
 add_subplot(spike_data=spk_rec, fig=fig, subplt_num=111)
 
 fig.tight_layout(pad=2)
-plt.show()
+plt.show()"""
 

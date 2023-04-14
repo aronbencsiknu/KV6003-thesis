@@ -40,8 +40,14 @@ class Options(object):
             self.opt.set_type = "spiking"
 
         elif self.opt.net_type == "SNN":
-            self.opt.flatten_data = True
-            self.opt.set_type = "spiking"
+
+            if self.opt.input_encoding != "population":
+                self.opt.flatten_data = True
+                self.opt.set_type = "spiking"
+
+            else:
+                self.opt.flatten_data = False
+                self.opt.set_type = "spiking"
 
         elif self.opt.net_type == "CNN":
             self.opt.flatten_data = False

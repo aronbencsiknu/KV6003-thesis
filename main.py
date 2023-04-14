@@ -56,9 +56,9 @@ else:
   X_temp, X_test, y_temp, y_test = train_test_split(X_test, y_test, test_size=0.2, random_state=42)
   _, X_val, _, y_val = train_test_split(X_temp, y_temp, test_size=0.1, random_state=42)
 
-train_set = CustomDataset(data=X_train, targets=y_train, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=opt.flatten_data, set_type=opt.set_type)
-test_set = CustomDataset(data=X_test, targets=y_test, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=opt.flatten_data, set_type=opt.set_type)
-val_set = CustomDataset(data=X_val, targets=y_val, encoding=opt.input_encoding, num_steps=opt.num_steps, flatten=opt.flatten_data, set_type=opt.set_type)
+train_set = CustomDataset(data=X_train, targets=y_train, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type)
+test_set = CustomDataset(data=X_test, targets=y_test, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type)
+val_set = CustomDataset(data=X_val, targets=y_val, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type)
 
 print("\n----------------------------------\n")
 print("Class counts: ")
@@ -77,6 +77,8 @@ print("\n----------------------------------\n")
 
 for batch_idx, (data, target) in enumerate(train_loader):
   input_size = np.shape(data)[2]
+  print("INPUT size",np.shape(data))
+  print("INPUT dims:",input_size)
   break
 
 metrics = Metrics(opt.net_type, opt.set_type, opt.output_decoding, train_set, opt.device, opt.num_steps)
