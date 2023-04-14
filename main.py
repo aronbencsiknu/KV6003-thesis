@@ -1,11 +1,8 @@
 # local imports
 from data import LobsterData
-"""from construct_dataset import ManipulatedDataset
-from construct_dataset import ExtractFeatures
-from construct_dataset import LabelledWindows
-from construct_dataset import CustomDataset"""
 import construct_dataset
 from construct_dataset import CustomDataset
+from receptive_encoder import CUBALayer
 from model import SNN, CSNN, CNN, CSNNGaussian
 from options import Options
 from plots import RasterPlot, ManipulationPlot

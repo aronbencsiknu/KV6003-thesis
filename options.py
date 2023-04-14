@@ -10,7 +10,7 @@ class Options(object):
 
     def add_args(self):
         self.argparser.add_argument("--output_decoding", type=str, default="rate", choices=["rate", "latency"], help="input encoding (rate, latency)")
-        self.argparser.add_argument("--input_encoding", type=str, default="rate", choices=["rate", "latency"], help="output decoding (rate, latency)")
+        self.argparser.add_argument("--input_encoding", type=str, default="rate", choices=["rate", "latency", "population"], help="output decoding (rate, latency, population)")
         self.argparser.add_argument("-wb", "--wandb_logging", action='store_true', help="enable logging to Weights&Biases")
         self.argparser.add_argument("--wandb_project", type=str, default="spiking-neural-network-experiments", help="Weights&Biases project name")
         self.argparser.add_argument("--wandb_entity", type=str, default="aronbencsik", help="Weights&Biases entity name")

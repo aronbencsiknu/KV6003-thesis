@@ -6,6 +6,7 @@ from torch.utils.data import Dataset
 from snntorch import spikeplot
 from snntorch import spikegen
 import numpy as np
+from receptive_encoder import CUBALayer
 
 
 class ManipulatedDataset:
@@ -231,6 +232,9 @@ class CustomDataset(Dataset):
         self.flatten = flatten
         self.set_type = set_type
 
+        if self.encoding == "population":
+            self.receptive_encoder = CUBALayer()
+
         for i in range(np.shape(self.data)[0]):
             if self.set_type == "spiking":
                 item = torch.FloatTensor(self.data[i])
@@ -247,8 +251,10 @@ class CustomDataset(Dataset):
                     item = spikegen.rate(item,num_steps=num_steps)
                 elif self.encoding=="latency":
                     item = spikegen.latency(item,num_steps=num_steps,normalize=True, linear=True)
+                elif self.encoding=="population":
+                    item = self.receptive_encoder(item)
                 else:
-                    raise Exception("Only rate and latency encodings allowed")
+                    raise Exception("Only rate,  latency and population encodings allowed")
 
             target=self.targets[i]
             #print("TARGET:",target)
@@ -283,7 +289,8 @@ class CustomDataset(Dataset):
             print(f"{j}\t-> {i}")
 
         return torch.tensor(w, dtype=torch.float32)
-    
+
+
 def prepare_data(data, inject, window_length, window_overlap):
     if inject:
         manipulated_data = ManipulatedDataset(data)

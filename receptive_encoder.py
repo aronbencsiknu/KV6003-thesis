@@ -1,9 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from snntorch import spikeplot
 from torch import nn
 import torch
 import random
 import math
+from matplotlib.ticker import MaxNLocator
 
 class CUBANeuron(nn.Module):
     def __init__(self, tau, g, Vth, dt, T):
@@ -40,25 +42,27 @@ class CUBANeuron(nn.Module):
 
 
 class CUBAPopulation():
-    def __init__(self, population_size, tau=0.1, g=-5.0, Vth=1, dt=0.001, T=0.1):
+    def __init__(self, population_size, tau=0.1, g=-5.0, Vth=1, dt=0.001, T=0.1, intercept_low=0.0, intercept_high=1.0):
+
         self.population_size = population_size
-        tau = 0.9
         self.tau = tau
         self.g = g
         self.Vth = Vth
         self.dt = dt
         self.T = T
+        self.intercept_low = intercept_low
+        self.intercept_high = intercept_high
 
         self.neurons = []
 
-        self.gains = self.generate_gain(population_size, -0.3, 0.3, tau, dt, T, Vth)
+        self.gains = self.generate_gain(population_size, intercept_low, intercept_high, tau, dt, T, Vth)
         self.create_neurons()       
     
     def create_neurons(self):
         for i in range(0, self.population_size):
             self.neurons.append(CUBANeuron(tau=self.tau, g=self.gains[i], Vth=self.Vth, dt=self.dt, T=self.T))
 
-    def generate_gain(self, count, intercept_low, intercept_high, tau, dt=0.001, T=0.1, Vth=1):
+    def generate_gain(self, count, intercept_low, intercept_high, tau, dt, T, Vth):
         gain = []
 
         for i in range(count):
@@ -80,35 +84,33 @@ class CUBAPopulation():
                 for j in range(0, int(T/dt)):
                     test_neuron.forward(intercept_current, dt, j)
 
-                #print(test_neuron.voltages[-1])
-                #print((last_voltage - Vth)**2)
                 last_voltage = test_neuron.voltages[-1]
 
-            print(counter, "_",i,":",g_min, " last voltage", last_voltage, " Vth", Vth)
             gain.append(g_min)
-
-        print("DONE")  
         return gain
     
     def reset_neurons(self):
         self.neurons = []
         self.create_neurons()
 
-    def forward(self, Iext, dt, index):
+    def forward(self, Iext, index):
         spikes_at_t = []
         for i in range(0, self.population_size):
-            spikes_at_t.append(self.neurons[i](Iext, dt, index))
+            spikes_at_t.append(self.neurons[i](Iext, self.dt, index))
 
         return spikes_at_t
 
 
 class CUBALayer():
-    def __init__(self, sample_size, population_size, tau=0.1, g=-5.0, Vth=1, dt=0.001, T=0.1):
-        self.sample_size = sample_size
-        self.population_size = population_size
+    def __init__(self, sample_size, population_size, tau=0.8, g=-5.0, Vth=1, dt=0.01, T=0.1):
+
+        self.sample_size = sample_size # number of populations
+        self.population_size = population_size # number of neurons in each population
         self.tau = tau
         self.g = g
         self.Vth = Vth
+        self.dt = dt
+        self.T = T
 
         self.populations = []
 
@@ -116,54 +118,89 @@ class CUBALayer():
             self.populations.append(CUBAPopulation(population_size, tau, g, Vth, dt, T))
             
 
-    def forward(self, Iext, dt, index):
-        population_spikes_at_t = []
-        for i in range(0, self.sample_size):
-            population_spikes_at_t.append(self.populations[i].forward(Iext, dt, index))
+    def forward(self, Iext, index=None):
 
-        return population_spikes_at_t
+        spikes_at_t = []
+
+        # loop through features and forward the respective neural populations
+        for i in range(0, self.sample_size):
+
+            # get spikes at time t form population i from feature i in Iext 
+            population_spikes_at_t = self.populations[i].forward(Iext[i], index)
+
+            for j in range(self.population_size):
+                spikes_at_t.append(population_spikes_at_t[j])
+
+        return spikes_at_t
     
+    def encode_window(self, Iext, window_size):
+
+        spk_rec = []
+        #window_size = 20 # CHANGE
+        for i in range(window_size):
+            for j in range(timesteps):
+
+                temp = self.forward(Iext[i])
+                spk_rec.append(temp)
+            
+            self.reset_neurons()
+
+        return spk_rec
+
     def reset_neurons(self):
         for i in range(self.sample_size):
             self.populations[i].reset_neurons()
 
 
-"""def simulate_neuron(spike_times, cuba_layer, Iext_mean=1, dt=0.001, T=0.1):
-    # Define time vector and input current
-    t = np.arange(0, T, dt)
-    Iext = np.full(len(t), Iext_mean)
-    #cuba_layer = CUBALayer(1, 10)
-    #spikes = np.zeros_like(t)
-    spikes = []
-    for i in range(len(t)):
-        spikes.append(cuba_layer.forward(Iext[i], dt, i))
+#############################################################
 
-    for i in range(len(cuba_layer.populations[0].neurons)):
-        spike_times[i].append(cuba_layer.populations[0].neurons[i].time_to_fire)
+window_size = 20
+feature_dimensionality = 2
+population_size = 10
 
-    cuba_layer.reset_neurons()
+cuba_layer = CUBALayer(feature_dimensionality, population_size)
+
+timesteps = int(cuba_layer.T/cuba_layer.dt)
+
+Iext = [[],[]]
+
+for i in range(window_size):
+    for j in range(feature_dimensionality):
+        random_num = np.random.normal()
+        Iext[j].append(random_num)
+        
+#Iext = np.transpose(Iext,)
+Iext = np.swapaxes(Iext,1,0)
+
+"""print(np.asarray(Iext)[0].shape)
 
 
-    return spike_times
+#spk_rec =[[] for _ in range(feature_dimensionality * population_size)]
+spk_rec = []
+
+for i in range(window_size):
+    for j in range(timesteps):
+        #print(i, j)
+        temp = cuba_layer.forward(Iext[i])
+        spk_rec.append(temp)
+            
+
+    cuba_layer.reset_neurons()"""
+
+spk_rec = cuba_layer.encode_window(Iext, window_size)
 
 
-# Call the function to simulate the neuron
-current_mean = -1
-spike_times = [[] for _ in range(10)]
+def add_subplot(spike_data,fig,subplt_num):
+        spikeplot.raster(spike_data, fig.add_subplot(subplt_num), s=10, c="blue")
 
-x_labels = []
-cuba_layer = CUBALayer(1, 10)
-for i in range(100):
-    spike_times = simulate_neuron(spike_times, cuba_layer, Iext_mean=current_mean)
-    current_mean += 0.02
-    x_labels.append(round(current_mean,3))
+        ax = fig.gca()
+        ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
-print(np.asarray(spike_times).shape)
+fig = plt.figure(facecolor="w", figsize=(10, 15))
 
-for i in range(10):
-    plt.plot(spike_times[i])
-    
-plt.gca().invert_yaxis()
-tick_locs = np.arange(0, len(x_labels), 10)
-plt.xticks(tick_locs, x_labels[::10])
-plt.show()"""
+spk_rec = torch.tensor(spk_rec)
+add_subplot(spike_data=spk_rec, fig=fig, subplt_num=111)
+
+fig.tight_layout(pad=2)
+plt.show()
+
