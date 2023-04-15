@@ -40,14 +40,14 @@ if opt.wandb_logging:
 unmanipulated_data = LobsterData()
 
 if opt.train_method == "multiclass":
-  X, y = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, True, opt.window_length, opt.window_overlap)
+  X, y = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length)
   X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
   X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1, random_state=42)
 else:
 
-  X_train, y_train = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, False, opt.window_length, opt.window_overlap)
-  X_test, y_test = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, True, opt.window_length, opt.window_overlap)
+  X_train, y_train = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, False, opt.window_length, opt.window_overlap, opt.manipulation_length)
+  X_test, y_test = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length)
 
 
   X_train, _, y_train, _ = train_test_split(X_train, y_train, test_size=0.2, random_state=42)
@@ -56,9 +56,22 @@ else:
   X_temp, X_test, y_temp, y_test = train_test_split(X_test, y_test, test_size=0.2, random_state=42)
   _, X_val, _, y_val = train_test_split(X_temp, y_temp, test_size=0.1, random_state=42)
 
-train_set = CustomDataset(data=X_train, targets=y_train, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type)
-test_set = CustomDataset(data=X_test, targets=y_test, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type)
-val_set = CustomDataset(data=X_val, targets=y_val, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type)
+if opt.input_encoding == "population":
+  receptive_encoder = CUBALayer(feature_dimensionality=1, population_size=20)
+  receptive_encoder.display_tuning_curves()
+else:
+  receptive_encoder = None
+  
+train_set = CustomDataset(data=X_train, targets=y_train, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type, pop_encoder=receptive_encoder)
+test_set = CustomDataset(data=X_test, targets=y_test, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type, pop_encoder=receptive_encoder)
+val_set = CustomDataset(data=X_val, targets=y_val, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type, pop_encoder=receptive_encoder)
+
+for i in range(1000):
+  if y_train[i] == 1:
+    print("Manipulated sample:", i)
+    plt.plot(X_train[i])
+    plt.show()
+    break
 
 print("\n----------------------------------\n")
 print("Class counts: ")
@@ -77,12 +90,10 @@ print("\n----------------------------------\n")
 
 for batch_idx, (data, target) in enumerate(train_loader):
   input_size = np.shape(data)[2]
-  print("INPUT size",np.shape(data))
-  print("INPUT dims:",input_size)
   break
 
 metrics = Metrics(opt.net_type, opt.set_type, opt.output_decoding, train_set, opt.device, opt.num_steps)
-early_stopping = EarlyStopping(patience=10, verbose=True)
+early_stopping = EarlyStopping(patience=20, verbose=True)
 
 if opt.net_type=="CSNN":
   model = CSNNGaussian(batch_size=opt.batch_size).to(opt.device)
@@ -97,13 +108,11 @@ elif opt.net_type=="CNN":
 optimizer = torch.optim.AdamW(model.parameters(), lr=opt.learning_rate, betas=(0.9, 0.999))
 
 
-def train(model,train_loader,optimizer,epoch, logging_index, stop_early):
+def train(model,train_loader,optimizer,epoch, logging_index):
   model.train()
   loss_val=0
   print("\nEpoch:\t\t",epoch,"/",opt.num_epochs)
   for batch_idx, (data, target) in enumerate(train_loader):
-      if stop_early:
-        break
       data=data.to(opt.device)
       target=target.to(opt.device)
 
@@ -233,14 +242,19 @@ logging_index_train = 0
 logging_index_forward_eval = 0
 stop_early = False
 
+RasterPlot(model, test_loader, opt.num_steps, opt.device)
 for epoch in range(1, opt.num_epochs+1):
 
-  model, logging_index_train = train(model,train_loader,optimizer,epoch, logging_index_train, stop_early)
+  model, logging_index_train = train(model,train_loader,optimizer,epoch, logging_index_train)
   logging_index_forward_eval, stop_early = forward_pass_eval(model, val_loader, logging_index_forward_eval)
+
+  if stop_early:
+    break
 
 logging_index_forward_eval = 0
 forward_pass_eval(model, test_loader, logging_index_forward_eval, testing=True)
 
-RasterPlot(model, test_loader, opt.num_steps, opt.device)
+#RasterPlot(model, test_loader, opt.num_steps, opt.device)
 
-wandb.finish()
+if opt.wandb_logging:
+  wandb.finish()

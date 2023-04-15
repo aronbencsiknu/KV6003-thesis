@@ -29,7 +29,7 @@ class SNN(nn.Module):
         for i in range(len(size) - 1):
             self.synapses.append(nn.Linear(size[i], size[i + 1], bias=False))
             if self.neuron_type == "Leaky":
-                self.neurons.append(snn.Leaky(beta=beta, spike_grad=spike_grad))
+                self.neurons.append(snn.Leaky(beta=beta, spike_grad=spike_grad, learn_beta=True))
 
             elif self.neuron_type == "Synaptic":
                 self.neurons.append(snn.Synaptic(alpha=alpha, beta=beta, threshold=0.2, spike_grad=spike_grad, learn_threshold=True))

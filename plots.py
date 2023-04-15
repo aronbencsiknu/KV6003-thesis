@@ -24,7 +24,7 @@ class RasterPlot(object):
     def get_spike_data(self, model, test_loader, num_steps, device):
         model.eval()
 
-        #normal testing data
+        # normal testing data
         test_data, test_target = next(iter(test_loader))
         test_data=test_data.to(device) # only one element in batch
         test_target=test_target.to(device) # only one element in batch
@@ -34,8 +34,7 @@ class RasterPlot(object):
         for i in range(len(spk_recs)):
             spk_recs[i] = torch.permute(spk_recs[i],(1,0,2))[0]
 
-        spk_recs.insert(0, torch.flatten(test_data[0], start_dim=1))
-
+        spk_recs.insert(0, test_data[0])
         return spk_recs
 
     def add_subplot(self,spike_data,fig,subplt_num):

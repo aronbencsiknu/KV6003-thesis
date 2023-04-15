@@ -3,20 +3,19 @@ import copy
 import pywt
 import torch
 from torch.utils.data import Dataset
-from snntorch import spikeplot
 from snntorch import spikegen
 import numpy as np
-from receptive_encoder import CUBALayer
+from progress.bar import ShadyBar
 
 
 class ManipulatedDataset:
-    def __init__(self, original_data):
+    def __init__(self, original_data, manipulation_length):
 
         # manipulation characteristics
-        self.m_len = 5
-        self.price_increase = 30 #bps
+        self.m_len = manipulation_length
+        self.price_increase = 100 #bps
         self.volume_increase = 4 #times
-        self.epsilon = 0.08 # probability of manipulation
+        self.epsilon = 0.1 # probability of manipulation
 
         self.original_data = original_data
         self.data = copy.deepcopy(original_data)
@@ -99,9 +98,9 @@ class ExtractFeatures:
         self.features = []
 
         # P_t and V_t
-        self.features.append(self.original_bid_price)
-        #self.features.append(self.original_ask_price)
-        self.features.append(self.original_bid_volume)
+        #self.features.append(self.original_bid_price)
+        self.features.append(self.original_ask_price)
+        #self.features.append(self.original_bid_volume)
         #self.features.append(self.original_ask_volume)
 
         # dPt/d_t and dV_t/d_t
@@ -174,7 +173,7 @@ class ExtractFeatures:
 
 
 class LabelledWindows:
-    def __init__(self, data, window_size, window_overlap, manipulation_indices, manipulated_data):
+    def __init__(self, data, window_size, window_overlap, manipulation_indices, manipulated_data, manipulation_length):
         self.manipulation_indices = manipulation_indices
         self.overlap = window_overlap
         self.windows = self.slice_data_to_windows(data, window_size, self.overlap)
@@ -185,7 +184,7 @@ class LabelledWindows:
                 in_range = False
 
                 for j in range(len(manipulation_indices)):
-                    if index+5 < manipulation_indices[j] and manipulation_indices[j] < index+window_size-5:
+                    if index < manipulation_indices[j] and manipulation_indices[j] < index+window_size-manipulation_length:
                         in_range = True
                         break
 
@@ -223,7 +222,7 @@ class LabelledWindows:
     
     
 class CustomDataset(Dataset):
-    def __init__(self, data, targets, num_steps, window_length, encoding="rate", flatten=True, set_type="spiking"):
+    def __init__(self, data, targets, num_steps, window_length, encoding="rate", flatten=True, set_type="spiking", pop_encoder=None):
         self.data=data.copy()
         self.targets=targets.copy()
         self.db=[]
@@ -234,12 +233,15 @@ class CustomDataset(Dataset):
         self.window_length = window_length
 
         if self.encoding == "population":
-            self.receptive_encoder = CUBALayer(feature_dimensionality=2, population_size=5)
+            #print(self.data[0])
+            #self.receptive_encoder = CUBALayer(feature_dimensionality=2, population_size=10)
+            self.receptive_encoder = pop_encoder
 
         # encode data to spikes using the defined encoding method
+        print()
+        bar = ShadyBar("Encoding set", max=np.shape(self.data)[0])
         for i in range(np.shape(self.data)[0]):
-
-
+            bar.next()
             if self.set_type == "spiking":
                 item = torch.FloatTensor(self.data[i])
             else:
@@ -254,12 +256,15 @@ class CustomDataset(Dataset):
             if self.set_type == "spiking":
                 if self.encoding=="rate":
                     item = spikegen.rate(item,num_steps=num_steps)
+
                 elif self.encoding=="latency":
                     item = spikegen.latency(item,num_steps=num_steps,normalize=True, linear=True)
+                
                 elif self.encoding=="population":
-
+                    #print("shape of item before encoding: ", np.shape(item))
                     item = self.receptive_encoder.encode_window(item, self.window_length)
                     item = torch.Tensor(item)
+                    
                 else:
                     raise Exception("Only rate,  latency and population encodings allowed")
 
@@ -297,9 +302,9 @@ class CustomDataset(Dataset):
         return torch.tensor(w, dtype=torch.float32)
 
 
-def prepare_data(data, inject, window_length, window_overlap):
+def prepare_data(data, inject, window_length, window_overlap, manipulation_length):
     if inject:
-        manipulated_data = ManipulatedDataset(data)
+        manipulated_data = ManipulatedDataset(data, manipulation_length)
         data = manipulated_data.data
 
         manipulation_indeces = manipulated_data.manipulation_indeces
@@ -309,7 +314,7 @@ def prepare_data(data, inject, window_length, window_overlap):
     extracted_features = ExtractFeatures(data)
     input_features = extracted_features.features
 
-    labelled_windows = LabelledWindows(input_features, window_length, window_overlap, manipulation_indeces, inject)
+    labelled_windows = LabelledWindows(input_features, window_length, window_overlap, manipulation_indeces, inject, manipulation_length)
     X = labelled_windows.windows
     y = labelled_windows.labels
 

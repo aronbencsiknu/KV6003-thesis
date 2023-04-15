@@ -62,6 +62,8 @@ class Metrics():
             return net(x, num_steps)
         elif self.net_type=="CNN":
             return net(x)
+        
+        
     """def precision(self):
         return precision_score(self.y_true, self.y_pred)
 
