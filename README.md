@@ -8,6 +8,7 @@ This is the practical work for my undergraduate thesis at Northumbria University
 2. Install the required libraries using the command ```pip install -r requirements.txt```
 
 ## Usage
+### Flags
 train.py can be run using the following flags:
 - ```--output_decoding``` Method of interpreting output spike-trains.
 - ```--input_encoding``` Method of encoding the input data into spike-trains.
