@@ -9,7 +9,7 @@ This is the practical work for my undergraduate thesis at Northumbria University
 
 ## Usage
 ### Flags
-train.py can be run using the following flags:
+main.py can be run using the following flags:
 - ```--output_decoding``` Method of interpreting output spike-trains.
 - ```--input_encoding``` Method of encoding the input data into spike-trains.
 - ```--wandb_logging``` Enable logging to [Weights&Biases](https://www.wandb.ai)
