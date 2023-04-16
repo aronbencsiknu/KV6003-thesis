@@ -40,14 +40,14 @@ if opt.wandb_logging:
 unmanipulated_data = LobsterData()
 
 if opt.train_method == "multiclass":
-  X, y = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length)
+  X, y, means = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length)
   X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
   X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1, random_state=42)
 else:
 
-  X_train, y_train = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, False, opt.window_length, opt.window_overlap, opt.manipulation_length)
-  X_test, y_test = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length)
+  X_train, y_train, _ = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, False, opt.window_length, opt.window_overlap, opt.manipulation_length)
+  X_test, y_test, _ = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length)
 
 
   X_train, _, y_train, _ = train_test_split(X_train, y_train, test_size=0.2, random_state=42)
@@ -57,7 +57,13 @@ else:
   _, X_val, _, y_val = train_test_split(X_temp, y_temp, test_size=0.1, random_state=42)
 
 if opt.input_encoding == "population":
-  receptive_encoder = CUBALayer(feature_dimensionality=1, population_size=20)
+
+  feature_dimensionality = 16
+
+  """for i in range(feature_dimensionality):
+    means.append(np.mean(X_train[i], axis=0))"""
+
+  receptive_encoder = CUBALayer(feature_dimensionality=feature_dimensionality, population_size=10, means=means, plot_tuning_curves=True)
   receptive_encoder.display_tuning_curves()
 else:
   receptive_encoder = None
@@ -254,7 +260,7 @@ for epoch in range(1, opt.num_epochs+1):
 logging_index_forward_eval = 0
 forward_pass_eval(model, test_loader, logging_index_forward_eval, testing=True)
 
-#RasterPlot(model, test_loader, opt.num_steps, opt.device)
+RasterPlot(model, test_loader, opt.num_steps, opt.device)
 
 if opt.wandb_logging:
   wandb.finish()

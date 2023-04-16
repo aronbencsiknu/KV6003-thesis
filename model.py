@@ -32,7 +32,7 @@ class SNN(nn.Module):
                 self.neurons.append(snn.Leaky(beta=beta, spike_grad=spike_grad, learn_beta=True))
 
             elif self.neuron_type == "Synaptic":
-                self.neurons.append(snn.Synaptic(alpha=alpha, beta=beta, threshold=0.2, spike_grad=spike_grad, learn_threshold=True))
+                self.neurons.append(snn.Synaptic(alpha=alpha, beta=beta, threshold=0.2, spike_grad=spike_grad, learn_beta=True, learn_threshold=True))
         
         self.dropout = nn.Dropout(p=0.4)
 

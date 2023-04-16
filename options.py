@@ -19,7 +19,7 @@ class Options(object):
         self.argparser.add_argument("--batch_size", type=int, default=64, help="Batch size")
         self.argparser.add_argument("--num_steps", type=int, default=100, help="Number of time steps to simulate")
         self.argparser.add_argument("--learning_rate", type=float, default=0.001, help="Learning rate")
-        self.argparser.add_argument("--hidden_size", type=int, default=[100, 100, 100], help="Hidden layer size")
+        self.argparser.add_argument("--hidden_size", type=int, default=[200, 200, 200], help="Hidden layer size")
         self.argparser.add_argument("--neuron_type", type=str, default="Leaky", choices=["Leaky","Synaptic"], help="Type of neuron to use (Leaky, Synaptic)")
         self.argparser.add_argument("--window_length", type=int, default=20, help="Length of the window to use for the dataset")
         self.argparser.add_argument("--window_overlap", type=float, default=0, help="Overlap of windows in the dataset")

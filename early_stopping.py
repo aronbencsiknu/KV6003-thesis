@@ -30,6 +30,7 @@ class EarlyStopping:
         self.delta = delta
         self.path = path
         self.trace_func = trace_func
+        
     def __call__(self, val_loss, model):
 
         score = -val_loss

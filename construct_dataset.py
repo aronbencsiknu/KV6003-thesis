@@ -13,9 +13,9 @@ class ManipulatedDataset:
 
         # manipulation characteristics
         self.m_len = manipulation_length
-        self.price_increase = 100 #bps
+        self.price_increase = 30 #bps
         self.volume_increase = 4 #times
-        self.epsilon = 0.1 # probability of manipulation
+        self.epsilon = 0.055 # probability of manipulation
 
         self.original_data = original_data
         self.data = copy.deepcopy(original_data)
@@ -98,19 +98,19 @@ class ExtractFeatures:
         self.features = []
 
         # P_t and V_t
-        #self.features.append(self.original_bid_price)
+        self.features.append(self.original_bid_price)
         self.features.append(self.original_ask_price)
-        #self.features.append(self.original_bid_volume)
-        #self.features.append(self.original_ask_volume)
+        self.features.append(self.original_bid_volume)
+        self.features.append(self.original_ask_volume)
 
         # dPt/d_t and dV_t/d_t
-        #self.features.append(self.take_derivative(self.original_bid_price))
-        #self.features.append(self.take_derivative(self.original_ask_price))
+        self.features.append(self.take_derivative(self.original_bid_price))
+        self.features.append(self.take_derivative(self.original_ask_price))
 
-        #self.features.append(self.take_derivative(self.original_bid_volume))
-        #self.features.append(self.take_derivative(self.original_ask_volume))
+        self.features.append(self.take_derivative(self.original_bid_volume))
+        self.features.append(self.take_derivative(self.original_ask_volume))
 
-        """# dPhat_t/d_t and dVhat_t/d_t
+        # dPhat_t/d_t and dVhat_t/d_t
         self.features.append(self.take_derivative(self.extract_high_frequencies(self.original_bid_price)))
         self.features.append(self.take_derivative(self.extract_high_frequencies(self.original_ask_price)))
 
@@ -122,7 +122,7 @@ class ExtractFeatures:
         self.features.append(self.extract_high_frequencies(self.original_ask_price))
 
         self.features.append(self.extract_high_frequencies(self.original_bid_volume))
-        self.features.append(self.extract_high_frequencies(self.original_ask_volume))"""
+        self.features.append(self.extract_high_frequencies(self.original_ask_volume))
 
         # clip the features to the same length
         min = len(self.features[0])
@@ -288,7 +288,7 @@ class CustomDataset(Dataset):
 
         return class_weights
     
-    def weights4balance(self):
+    def get_class_weights(self):
         """
         :return: The class blanace weights for training
         """
@@ -314,8 +314,12 @@ def prepare_data(data, inject, window_length, window_overlap, manipulation_lengt
     extracted_features = ExtractFeatures(data)
     input_features = extracted_features.features
 
+    means = []
+    for i in range(len(input_features)):
+        means.append(np.mean(input_features[i]))
+
     labelled_windows = LabelledWindows(input_features, window_length, window_overlap, manipulation_indeces, inject, manipulation_length)
     X = labelled_windows.windows
     y = labelled_windows.labels
 
-    return X, y
+    return X, y, means

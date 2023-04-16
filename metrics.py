@@ -1,7 +1,8 @@
 from snntorch import functional
 import torch
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix 
+from sklearn.metrics import confusion_matrix
+from loss import mse_count_loss
 
 class Metrics():
     def __init__(self, net_type, set_type, output_decoding, train_set, device, num_steps):
@@ -13,19 +14,27 @@ class Metrics():
         self.spiking = True if self.net_type=="CSNN" or self.net_type=="SNN" else False
         
         if self.set_type=="non-spiking":
-            self.loss_fn = torch.nn.NLLLoss(train_set.weights4balance().to(device))
+            self.loss_fn = torch.nn.NLLLoss(train_set.get_class_weights().to(device))
         elif self.output_decoding=="rate":
             #loss_fn = mse_count_loss(correct_rate=1, incorrect_rate=0.1)
-            self.loss_fn = functional.loss.mse_count_loss(correct_rate=1, incorrect_rate=0.1)
+            #self.loss_fn = functional.loss.mse_count_loss(correct_rate=1, incorrect_rate=0.1)
+
+            self.loss_fn = mse_count_loss(correct_rate=1.0, incorrect_rate=0.1, class_weights=train_set.get_class_weights().to(device))
+
         elif self.output_decoding=="latency":
             self.loss_fn = functional.loss.mse_temporal_loss(target_is_time=False, on_target=0, off_target=num_steps, tolerance=5, multi_spike=False)
 
     def loss(self, output, y_true):
         if self.spiking:
             y_pred = output[0][-1]
+            if self.output_decoding=="rate":
+                loss = self.loss_fn(y_pred, y_true)
+            else:
+                loss = self.loss_fn(y_pred, y_true)
         else:
-            y_pred = output  
-        return self.loss_fn(y_pred, y_true)
+            y_pred = output
+            loss = self.loss_fn(y_pred, y_true)  
+        return loss
 
     def accuracy(self, output, y_true):
         if not self.spiking:

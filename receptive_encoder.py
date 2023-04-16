@@ -23,16 +23,33 @@ class CUBANeuron(nn.Module):
     
     def forward(self, Iext, dt, index):
         
+        if not self.fired:
+
+            # Update membrane potential using Euler method
+            self.V = math.exp(-dt/self.tau) * self.V + self.g * Iext
+            self.voltages.append(self.V)
+            
+            # Generate output spike if membrane potential reaches threshold
+            if self.V >= self.Vth:
+                self.spike = 1
+                self.fired = True
+                self.time_to_fire = index
+            else:
+                self.spike = 0
+        else:
+            self.spike = 0
+
+        return self.spike
+        
+    def tune_forward(self, Iext, dt, index):
+
         # Update membrane potential using Euler method
         self.V = math.exp(-dt/self.tau) * self.V + self.g * Iext
         self.voltages.append(self.V)
         
-        
         # Generate output spike if membrane potential reaches threshold
-        
-        if self.V >= self.Vth and not self.fired:
+        if self.V >= self.Vth:
             self.spike = 1
-            #self.V = 0
             self.fired = True
             self.time_to_fire = index
         else:
@@ -65,7 +82,7 @@ class CUBAPopulation():
     def tune_receptive_fields(self, count, intercept_low, intercept_high, tau, dt, T, Vth):
         gain = []
         tau_list = np.linspace(0.1, 0.9, num=count)
-        intercepts = np.linspace(intercept_low+0.001, intercept_high, num=count)
+        intercepts = np.linspace(intercept_low+0.001, intercept_high*2, num=count)
         #intercepts = np.logspace(np.log10(intercept_low+0.001), np.log10(intercept_high), num=count)
         
         print("Tuning neuronal fields...")
@@ -87,7 +104,7 @@ class CUBAPopulation():
                 g_min = g_min - ((last_voltage - Vth)/32) * multiplier
                 test_neuron = CUBANeuron(tau_list[i], g_min, Vth, dt, T)
                 for j in range(0, int(T/dt)):
-                    test_neuron.forward(intercept_current, dt, j)
+                    test_neuron.tune_forward(intercept_current, dt, j)
 
                 last_voltage = test_neuron.voltages[-1]
 
@@ -124,12 +141,12 @@ class CUBAPopulation():
                 self.reset_neurons()
         
         y = np.swapaxes(y, 0, 1)
-        plt.plot(x, y, linewidth=0.5)
-        plt.show()
+
+        return x, y
 
 
 class CUBALayer():
-    def __init__(self, feature_dimensionality, population_size, tau=0.8, g=-5.0, Vth=1, dt=0.01, T=0.1):
+    def __init__(self, feature_dimensionality, population_size, means, plot_tuning_curves=True, tau=0.8, g=-5.0, Vth=1, dt=0.01, T=0.1):
 
         self.feature_dimensionality = feature_dimensionality # number of populations
         self.population_size = population_size # number of neurons in each population
@@ -142,7 +159,7 @@ class CUBALayer():
         self.populations = []
 
         for i in range(self.feature_dimensionality):
-            self.populations.append(CUBAPopulation(population_size, tau, g, Vth, dt, T, intercept_low=0.0, intercept_high=))
+            self.populations.append(CUBAPopulation(population_size, tau, g, Vth, dt, T, intercept_low=0.0, intercept_high=means[i]))
             
 
     def forward(self, Iext, index=None):
@@ -151,12 +168,9 @@ class CUBALayer():
 
         # loop through features and forward the respective neural populations
         for i in range(0, self.feature_dimensionality):
-            
-            # get spikes at time t form population i from feature i in Iext 
-            population_spikes_at_t = self.populations[i].forward(Iext[i], index)
 
-            for j in range(self.population_size):
-                spikes_at_t.append(population_spikes_at_t[j])
+            # get spikes at time t form population i from feature i in Iext 
+            spikes_at_t.extend(self.populations[i].forward(Iext[i], index))
 
         return spikes_at_t
     
@@ -164,10 +178,9 @@ class CUBALayer():
         Iext = np.swapaxes(Iext,1,0)
         timesteps = int(self.T/self.dt)
         spk_rec = []
-        #window_size = 20 # CHANGE
+
         for i in range(window_size):
             for j in range(timesteps):
-
                 temp = self.forward(Iext[i])
                 spk_rec.append(temp)
             
@@ -181,7 +194,11 @@ class CUBALayer():
 
     def display_tuning_curves(self):
         for i in range(self.feature_dimensionality):
-            self.populations[i].display_tuning_curve()
+            plt.subplot(1, self.feature_dimensionality, i+1)
+            temp = self.populations[i].display_tuning_curve()
+            plt.plot(temp[0],temp[1] , linewidth=0.5)
+        
+        plt.show()
 
 
 #############################################################
