@@ -38,20 +38,6 @@ class Metrics():
             loss = self.loss_fn(y_pred, y_true)  
         return loss
 
-    def accuracy(self, output, y_true):
-        if not self.spiking:
-            ps = torch.exp(output)
-            top_class = torch.argmax(ps, dim=1)
-            equals = top_class == y_true
-
-            return torch.mean(equals.type(torch.FloatTensor)).item()
-        else:
-            y_pred = output[0][-1]
-            if self.output_decoding=="rate":
-                return functional.acc.accuracy_rate(y_pred,y_true)
-            else:
-                return functional.acc.accuracy_temporal(y_pred,y_true)
-
     def return_predicted(self, output):
         if not self.spiking:
             ps = torch.exp(output)
@@ -86,8 +72,22 @@ class Metrics():
                 self.FN += 1
         
     def precision(self):
-        return self.TP/(self.TP+self.FP)
+        return self.TP/(self.TP+self.FP+1e-8)
 
     def recall(self):
-        return self.TP/(self.TP+self.FN)
+        return self.TP/(self.TP+self.FN+1e-8)
+    
+    def accuracy(self, output, y_true):
+        if not self.spiking:
+            ps = torch.exp(output)
+            top_class = torch.argmax(ps, dim=1)
+            equals = top_class == y_true
+
+            return torch.mean(equals.type(torch.FloatTensor)).item()
+        else:
+            y_pred = output[0][-1]
+            if self.output_decoding=="rate":
+                return functional.acc.accuracy_rate(y_pred,y_true)
+            else:
+                return functional.acc.accuracy_temporal(y_pred,y_true)
         

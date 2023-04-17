@@ -9,17 +9,19 @@ class Options(object):
         self.initialized = False
 
     def add_args(self):
+        self.argparser.add_argument("--path", type=str, default="Amazon", choices=["Amazon", "Intel", "Apple", "Microsoft", "Google"], help="Dataset to use (Amazon, Intel, Apple, Microsoft, Google)")
         self.argparser.add_argument("--output_decoding", type=str, default="rate", choices=["rate", "latency"], help="input encoding (rate, latency)")
         self.argparser.add_argument("--input_encoding", type=str, default="rate", choices=["rate", "latency", "population"], help="output decoding (rate, latency, population)")
         self.argparser.add_argument("-wb", "--wandb_logging", action='store_true', help="enable logging to Weights&Biases")
         self.argparser.add_argument("--wandb_project", type=str, default="spiking-neural-network-experiments", help="Weights&Biases project name")
         self.argparser.add_argument("--wandb_entity", type=str, default="aronbencsik", help="Weights&Biases entity name")
         self.argparser.add_argument("--net_type", type=str, default="CSNN",choices=["SNN", "CSNN", "CNN"], help="Type of network to use (SNN, CSNN, CNN)")
+        self.argparser.add_argument("-s", "--save_model", action='store_true', help="Save the model when finished training")
+        self.argparser.add_argument("-l", "--load_model", action='store_true', help="Skip training and load a model")
         self.argparser.add_argument("--num_epochs", type=int, default=100, help="Number of epochs to train for")
         self.argparser.add_argument("--batch_size", type=int, default=64, help="Batch size")
         self.argparser.add_argument("--num_steps", type=int, default=100, help="Number of time steps to simulate")
         self.argparser.add_argument("--learning_rate", type=float, default=0.001, help="Learning rate")
-        #self.argparser.add_argument("--hidden_size", type=int, default=[200, 200, 200], help="Hidden layer size")
         self.argparser.add_argument("--hidden_size", nargs='+',default=[200, 200, 200], help='Hidden layer size')
         self.argparser.add_argument("--neuron_type", type=str, default="Leaky", choices=["Leaky","Synaptic"], help="Type of neuron to use (Leaky, Synaptic)")
         self.argparser.add_argument("--window_length", type=int, default=10, help="Length of the window to use for the dataset")
@@ -34,7 +36,7 @@ class Options(object):
             self.add_args()
         self.opt = self.argparser.parse_args()
 
-        print(self.opt.hidden_size)
+        self.opt.hidden_size = [int(i) for i in self.opt.hidden_size]
 
         self.opt.wandb_key = "edfb94e4b9dca47c397a343d2829e9af262d9e32"
 

@@ -3,7 +3,7 @@ from data import LobsterData
 import construct_dataset
 from construct_dataset import CustomDataset
 from receptive_encoder import CUBALayer
-from model import SNN, CSNN, CNN, CSNNGaussian
+from model import SNN, CSNN, CNN, OC_SCNN
 from options import Options
 import plots
 from metrics import Metrics
@@ -24,7 +24,7 @@ if opt.wandb_logging:
     
     print("\n#########################################")
     print("#########################################\n")
-    print("!!IMPORTANT!! You need to create a WandB account and paste your atuhorization key in options.py to use this.")
+    print("!!IMPORTANT!! You need to create a WandB account and paste your authorization key in options.py to use this.")
     print("\n#########################################")
     print("#########################################\n")
 
@@ -36,26 +36,29 @@ if opt.wandb_logging:
                settings=wandb.Settings(start_method="thread"),
                config=opt)
 
-unmanipulated_data = LobsterData()
-
 if opt.train_method == "multiclass":
+  unmanipulated_data = LobsterData(opt.path)
+
   X, y, means = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length)
   X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
   X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1, random_state=42)
 
 else:
-  X_train, y_train, _ = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, False, opt.window_length, opt.window_overlap, opt.manipulation_length)
-  X_test, y_test, _ = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length)
+  train_data = LobsterData("Amazon")
+  test_data = LobsterData("Apple")
+
+  X_train, y_train, _ = construct_dataset.prepare_data(train_data.orderbook_data, False, opt.window_length, opt.window_overlap, opt.manipulation_length)
+  X_test, y_test, _ = construct_dataset.prepare_data(test_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length)
   X_train, _, y_train, _ = train_test_split(X_train, y_train, test_size=0.2, random_state=42)
   X_temp, X_test, y_temp, y_test = train_test_split(X_test, y_test, test_size=0.2, random_state=42)
   _, X_val, _, y_val = train_test_split(X_temp, y_temp, test_size=0.1, random_state=42)
 
 if opt.input_encoding == "population":
-
   feature_dimensionality = np.shape(X_train)[2]
-
   receptive_encoder = CUBALayer(feature_dimensionality=feature_dimensionality, population_size=10, means=means, plot_tuning_curves=True)
-  receptive_encoder.display_tuning_curves()
+  opt.num_steps = int(receptive_encoder.T/receptive_encoder.dt) * opt.window_length # override num_steps
+  receptive_encoder.display_tuning_curves() # plot tuning curves
+
 else:
   receptive_encoder = None
   
@@ -84,12 +87,16 @@ input_size = np.shape(data)[2]
 metrics = Metrics(opt.net_type, opt.set_type, opt.output_decoding, train_set, opt.device, opt.num_steps)
 early_stopping = EarlyStopping(patience=20, verbose=True)
 
-if opt.net_type=="CSNN":
-  model = CSNNGaussian(batch_size=opt.batch_size).to(opt.device)
-  if opt.train_method == "oneclass":
+# Select model
+if opt.train_method == "oneclass":
+    model = OC_SCNN(batch_size=opt.batch_size).to(opt.device)
     model.load_state_dict(torch.load('checkpoint.pt')) # load best model
     model.freeze_body()
     model.reset_head()
+
+elif opt.net_type=="CSNN":
+  model = CSNN(batch_size=opt.batch_size).to(opt.device)
+  
 elif opt.net_type=="SNN":
   model = SNN(input_size=input_size, hidden_size=opt.hidden_size, output_size=2).to(opt.device)
 elif opt.net_type=="CNN":
@@ -97,6 +104,7 @@ elif opt.net_type=="CNN":
 optimizer = torch.optim.AdamW(model.parameters(), lr=opt.learning_rate, betas=(0.9, 0.999))
 
 def train(model,train_loader,optimizer,epoch, logging_index):
+
   model.train()
   loss_val=0
   print("\nEpoch:\t\t",epoch,"/",opt.num_epochs)
@@ -125,11 +133,11 @@ def train(model,train_loader,optimizer,epoch, logging_index):
 
   loss_val /= len(train_loader)
   print("Train loss:\t%.3f" % loss_val)
-
  
   return model, logging_index
 
 def forward_pass_eval(model,dataloader, logging_index, testing=False):
+
   model.eval()
   loss = 0
   acc = 0
@@ -142,12 +150,16 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
 
   if testing:
     print("loading best model...")
-    model.load_state_dict(torch.load('checkpoint.pt')) # load best model
 
-    if opt.save_model:
-      model_name = opt.net_type + "_" + opt.input_encoding + "_" + opt.output_decoding + "_" + opt.neuron_type + "_" + opt.set_type + "_" + opt.train_method + ".pt"
-      path = pathlib.Path("trained_models") / model_name
-      torch.save(model.state_dict(), path)
+    if opt.load_model:
+      model.load_state_dict(torch.load('checkpoint.pt'))
+    else:
+      model.load_state_dict(torch.load('checkpoint.pt')) # load best model
+
+      if opt.save_model:
+        model_name = opt.net_type + "_" + opt.input_encoding + "_" + opt.output_decoding + "_" + opt.neuron_type + "_" + opt.set_type + "_" + opt.train_method + ".pt"
+        path = pathlib.Path("trained_models") / model_name
+        torch.save(model.state_dict(), path)
 
   with torch.no_grad():
     for batch_idx, (data, target) in enumerate(dataloader):
@@ -162,7 +174,6 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
       else:"""
       output = metrics.forward_pass(model, data, opt.num_steps)
 
-      #output = metrics.forward_pass(model, data, opt.num_steps)
       acc_current = metrics.accuracy(output,target)
 
       loss_current = metrics.loss(output,target).item()
@@ -188,8 +199,7 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
       logging_index+=1
 
   if testing:
-    plots.plot_confusion_matrix(y_pred, y_true)
-
+    metrics.perf_measure(y_true, y_pred)
     loss /= len(test_loader)
     acc /= len(test_loader)
     acc = acc*100
@@ -201,8 +211,13 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
     
   
   if testing:
+    
     print("Test loss:\t%.3f" % loss)
     print("Test acc:\t%.2f" % acc+"%\n")
+    print("Precision:\t%.3f" % metrics.precision())
+    print("Recall:\t%.2f"% metrics.recall() +"\n")
+
+    plots.plot_confusion_matrix(y_pred, y_true, metrics)
   else:
     print("Val loss:\t%.3f" % loss)
     print("Val acc:\t%.2f"% acc+"%\n")
@@ -219,15 +234,17 @@ logging_index_train = 0
 logging_index_forward_eval = 0
 stop_early = False
 
-for epoch in range(1, opt.num_epochs+1):
+if not opt.load_model:
+  for epoch in range(1, opt.num_epochs+1):
 
-  model, logging_index_train = train(model,train_loader,optimizer,epoch, logging_index_train)
-  logging_index_forward_eval, stop_early = forward_pass_eval(model, val_loader, logging_index_forward_eval)
+    model, logging_index_train = train(model,train_loader,optimizer,epoch, logging_index_train)
+    logging_index_forward_eval, stop_early = forward_pass_eval(model, val_loader, logging_index_forward_eval)
 
-  if stop_early:
-    break
+    if stop_early:
+      break
 
-logging_index_forward_eval = 0
+  logging_index_forward_eval = 0
+
 forward_pass_eval(model, test_loader, logging_index_forward_eval, testing=True)
 
 if opt.wandb_logging:

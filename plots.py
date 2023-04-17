@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 from snntorch import spikeplot
 import numpy as np
-from sklearn.metrics import confusion_matrix 
+from sklearn.metrics import confusion_matrix
 
 
 """
@@ -82,10 +82,10 @@ plot confusion matrix
 #####################
 """
 def plot_confusion_matrix(y_pred, y_true):
-    
     cm_prec = confusion_matrix(y_true, y_pred, labels=[0,1], normalize="pred")
     cm_sens = confusion_matrix(y_true, y_pred, labels=[0,1], normalize="true")
     conf_matrix = cm_sens*cm_prec*2/(cm_sens+cm_prec+1e-8)
+
     fig, ax = plt.subplots(figsize=(7.5, 7.5))
     ax.matshow(conf_matrix, alpha=0.5, cmap=plt.cm.Blues)
     for i in range(conf_matrix.shape[0]):
@@ -93,6 +93,6 @@ def plot_confusion_matrix(y_pred, y_true):
             ax.text(x=j, y=i,s=conf_matrix[i, j], va='center', ha='center', size='xx-large')
     
     plt.xlabel('Predictions', fontsize=18)
-    plt.ylabel('Actuals', fontsize=18)
-    plt.title('F1-Score Matrix', fontsize=18)
+    plt.ylabel('Targets', fontsize=15)
+    plt.title('F1-Score Matrix', fontsize=15)
     plt.show()
