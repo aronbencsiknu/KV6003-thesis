@@ -10,15 +10,17 @@ class Metrics():
         self.set_type = set_type
         self.output_decoding = output_decoding
         self.train_set = train_set
+        self.TP = 0
+        self.FP = 0
+        self.TN = 0
+        self.FN = 0
 
         self.spiking = True if self.net_type=="CSNN" or self.net_type=="SNN" else False
         
         if self.set_type=="non-spiking":
             self.loss_fn = torch.nn.NLLLoss(train_set.get_class_weights().to(device))
-        elif self.output_decoding=="rate":
-            #loss_fn = mse_count_loss(correct_rate=1, incorrect_rate=0.1)
-            #self.loss_fn = functional.loss.mse_count_loss(correct_rate=1, incorrect_rate=0.1)
 
+        elif self.output_decoding=="rate":
             self.loss_fn = mse_count_loss(correct_rate=1.0, incorrect_rate=0.1, class_weights=train_set.get_class_weights().to(device))
 
         elif self.output_decoding=="latency":
@@ -45,7 +47,6 @@ class Metrics():
             return torch.mean(equals.type(torch.FloatTensor)).item()
         else:
             y_pred = output[0][-1]
-            #print(output)
             if self.output_decoding=="rate":
                 return functional.acc.accuracy_rate(y_pred,y_true)
             else:
@@ -71,45 +72,22 @@ class Metrics():
             return net(x, num_steps)
         elif self.net_type=="CNN":
             return net(x)
+    
+    def perf_measure(self, y_actual, y_hat):
+
+        for i in range(len(y_hat)): 
+            if y_actual[i]==y_hat[i]==1:
+                self.TP += 1
+            if y_hat[i]==1 and y_actual[i]!=y_hat[i]:
+                self.FP += 1
+            if y_actual[i]==y_hat[i]==0:
+                self.TN += 1
+            if y_hat[i]==0 and y_actual[i]!=y_hat[i]:
+                self.FN += 1
         
-        
-    """def precision(self):
-        return precision_score(self.y_true, self.y_pred)
+    def precision(self):
+        return self.TP/(self.TP+self.FP)
 
     def recall(self):
-        return recall_score(self.y_true, self.y_pred)
-
-    def f1_matrix(self):
-        cm_prec = confusion_matrix(y_true, y_pred, labels=[0,1], normalize="pred")
-        cm_sens = confusion_matrix(y_true, y_pred, labels=[0,1], normalize="true")
-        conf_matrix = cm_sens*cm_prec*2/(cm_sens+cm_prec+1e-8)
-        fig, ax = plt.subplots(figsize=(7.5, 7.5))
-        ax.matshow(conf_matrix, alpha=0.5, cmap=plt.cm.Blues)
-        for i in range(conf_matrix.shape[0]):
-            for j in range(conf_matrix.shape[1]):
-                ax.text(x=j, y=i,s=conf_matrix[i, j], va='center', ha='center', size='xx-large')
+        return self.TP/(self.TP+self.FN)
         
-        plt.xlabel('Predictions', fontsize=18)
-        plt.ylabel('Actuals', fontsize=18)
-        plt.title('F1-Score Matrix', fontsize=18)
-        plt.show()
-
-    def roc_auc(self):
-        return roc_auc_score(self.y_true, self.y_pred)
-
-    def confusion_matrix(self):
-        return confusion_matrix(self.y_true, self.y_pred)
-
-    def classification_report(self):
-        return classification_report(self.y_true, self.y_pred)
-
-    def all(self):
-        return {
-            "accuracy": self.accuracy(),
-            "precision": self.precision(),
-            "recall": self.recall(),
-            "f1": self.f1(),
-            "roc_auc": self.roc_auc(),
-            "confusion_matrix": self.confusion_matrix(),
-            "classification_report": self.classification_report()
-        }"""

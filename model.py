@@ -19,6 +19,7 @@ class SNN(nn.Module):
         super().__init__()
 
         self.neuron_type = neuron_type
+
         self.synapses = nn.ModuleList() # list of synapses
         self.neurons = nn.ModuleList() # list of neurons
 
@@ -81,8 +82,6 @@ class SNN(nn.Module):
             mem_recs[i] = torch.stack(mem_recs[i], dim=0)
             spk_recs[i] = torch.stack(spk_recs[i], dim=0)
         return [spk_recs, mem_recs]
-        #return torch.stack(spk_rec, dim=0), torch.stack(mem_rec, dim=0)
-
 
 """
 ################################################
@@ -114,7 +113,6 @@ class CSNN(nn.Module):
 
         self.synapses.append(nn.Linear(256, 2))
         self.neurons.append(snn.Leaky(beta=beta, spike_grad=spike_grad, learn_threshold=True))
-        #self.lsm = nn.LogSoftmax(dim=1)
 
         self.dropout = nn.Dropout(p=0.3)
         
@@ -180,17 +178,6 @@ class CSNN(nn.Module):
             
 
         return [spk_recs, mem_recs]
-    
-    """def generate_gaussian_feature(self):
-        gaussian_dist = np.random.normal(size=(self.batch_size, 2 * self.hidden_size[-1]))
-        max = np.asarray(gaussian_dist[i]).max()
-        min = np.asarray(gaussian_dist[i]).min()
-
-        for i in range(gaussian_dist[i]):
-            # normalizing values as: value' = (value - min) / (max - min)
-            gaussian_dist[i] = (gaussian_dist[i] - min) / (max - min)
-
-        return gaussian_dist"""
 
 """
 ###############################
@@ -365,9 +352,9 @@ class ClassificationHead(nn.Module):
         return [membranes, mem_recs, spk_recs]
 
 
-class CSNNGaussian(nn.Module):
+class OC_SCNN(nn.Module):
     def __init__(self, batch_size, hidden_size=[4,32,64], beta=0.5, spike_grad=surrogate.fast_sigmoid(slope=25), neuron_type="Leaky"):
-        super(CSNNGaussian, self).__init__()
+        super(OC_SCNN, self).__init__()
         self.hidden_size = hidden_size
         self.batch_size = batch_size
         self.neuron_type = neuron_type

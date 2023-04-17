@@ -188,7 +188,7 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
       logging_index+=1
 
   if testing:
-    plot_confusion_matrix(y_pred, y_true)
+    plots.plot_confusion_matrix(y_pred, y_true)
 
     loss /= len(test_loader)
     acc /= len(test_loader)
