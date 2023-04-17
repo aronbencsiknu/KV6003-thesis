@@ -7,12 +7,11 @@ dtype = torch.float
 
 class LossFunctions:
     def _prediction_check(self, spk_out):
-        device = spk_out.device
 
         num_steps = spk_out.size(0)
         num_outputs = spk_out.size(-1)
 
-        return device, num_steps, num_outputs
+        return num_steps, num_outputs
 
 class mse_count_loss(LossFunctions):
     def __init__(
@@ -29,7 +28,7 @@ class mse_count_loss(LossFunctions):
         self.__name__ = "mse_count_loss"
 
     def __call__(self, spk_out, targets):
-        _, num_steps, num_outputs = self._prediction_check(spk_out)
+        num_steps, num_outputs = self._prediction_check(spk_out)
 
         # generate ideal spike-count in C sized vector
         on_target = int(num_steps * self.correct_rate)
@@ -42,6 +41,9 @@ class mse_count_loss(LossFunctions):
         )
 
         spike_count = torch.sum(spk_out, 0)  # B x C
+        if self.class_weights is not None:
+            loss = torch.mean(torch.square(spike_count_target - spike_count) * self.class_weights)
+        else:
+            loss = torch.mean(torch.square(spike_count_target - spike_count))
 
-        loss = torch.mean(torch.square(spike_count_target - spike_count) * self.class_weights)
         return loss / num_steps

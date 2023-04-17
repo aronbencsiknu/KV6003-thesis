@@ -233,8 +233,6 @@ class CustomDataset(Dataset):
         self.window_length = window_length
 
         if self.encoding == "population":
-            #print(self.data[0])
-            #self.receptive_encoder = CUBALayer(feature_dimensionality=2, population_size=10)
             self.receptive_encoder = pop_encoder
 
         # encode data to spikes using the defined encoding method
@@ -245,8 +243,7 @@ class CustomDataset(Dataset):
             if self.set_type == "spiking":
                 item = torch.FloatTensor(self.data[i])
             else:
-                item = torch.permute(torch.FloatTensor(self.data[i]),(1,0))
-            
+                item = torch.permute(torch.FloatTensor(self.data[i]),(1,0))  
             
             if self.flatten:
                 item=torch.flatten(item)

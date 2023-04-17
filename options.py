@@ -15,7 +15,7 @@ class Options(object):
         self.argparser.add_argument("-wb", "--wandb_logging", action='store_true', help="enable logging to Weights&Biases")
         self.argparser.add_argument("--wandb_project", type=str, default="spiking-neural-network-experiments", help="Weights&Biases project name")
         self.argparser.add_argument("--wandb_entity", type=str, default="aronbencsik", help="Weights&Biases entity name")
-        self.argparser.add_argument("--net_type", type=str, default="CSNN",choices=["SNN", "CSNN", "CNN"], help="Type of network to use (SNN, CSNN, CNN)")
+        self.argparser.add_argument("--net_type", type=str, default="CSNN",choices=["SNN", "CSNN", "CNN", "OC_SCNN"], help="Type of network to use (SNN, CSNN, CNN, OC_SCNN)")
         self.argparser.add_argument("-s", "--save_model", action='store_true', help="Save the model when finished training")
         self.argparser.add_argument("-l", "--load_model", action='store_true', help="Skip training and load a model")
         self.argparser.add_argument("--num_epochs", type=int, default=100, help="Number of epochs to train for")
@@ -40,7 +40,7 @@ class Options(object):
 
         self.opt.wandb_key = "edfb94e4b9dca47c397a343d2829e9af262d9e32"
 
-        if self.opt.net_type == "CSNN":
+        if self.opt.net_type == "CSNN" or self.opt.net_type == "OC_SCNN":
             self.opt.flatten_data = False
             self.opt.set_type = "spiking"
 

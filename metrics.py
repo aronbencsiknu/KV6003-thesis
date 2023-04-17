@@ -5,23 +5,29 @@ from sklearn.metrics import confusion_matrix
 from loss import mse_count_loss
 
 class Metrics():
-    def __init__(self, net_type, set_type, output_decoding, train_set, device, num_steps):
+    def __init__(self, net_type, set_type, output_decoding, train_set, device, num_steps, oneclass=False):
         self.net_type = net_type
         self.set_type = set_type
         self.output_decoding = output_decoding
         self.train_set = train_set
+        self.oneclass = oneclass
         self.TP = 0
         self.FP = 0
         self.TN = 0
         self.FN = 0
 
-        self.spiking = True if self.net_type=="CSNN" or self.net_type=="SNN" else False
+        self.spiking = True if self.net_type=="CSNN" or self.net_type=="SNN" or net_type == "OC_SCNN" else False
         
+        if self.oneclass:
+            class_weights = None
+        else:
+            class_weights = train_set.get_class_weights().to(device)
+
         if self.set_type=="non-spiking":
-            self.loss_fn = torch.nn.NLLLoss(train_set.get_class_weights().to(device))
+            self.loss_fn = torch.nn.NLLLoss(class_weights)
 
         elif self.output_decoding=="rate":
-            self.loss_fn = mse_count_loss(correct_rate=1.0, incorrect_rate=0.1, class_weights=train_set.get_class_weights().to(device))
+            self.loss_fn = mse_count_loss(correct_rate=1.0, incorrect_rate=0.1, class_weights=class_weights)
 
         elif self.output_decoding=="latency":
             self.loss_fn = functional.loss.mse_temporal_loss(target_is_time=False, on_target=0, off_target=num_steps, tolerance=5, multi_spike=False)
@@ -29,6 +35,7 @@ class Metrics():
     def loss(self, output, y_true):
         if self.spiking:
             y_pred = output[0][-1]
+            
             if self.output_decoding=="rate":
                 loss = self.loss_fn(y_pred, y_true)
             else:
@@ -50,9 +57,12 @@ class Metrics():
             return predicted
         
     def forward_pass(self, net, x, num_steps, gaussian=False):
-        if self.net_type=="CSNN":
+        if self.net_type=="OC_SCNN":
             if gaussian:
                 return net(x, num_steps, gaussian=True)
+            
+            return net(x, num_steps)
+        elif self.net_type=="CSNN":
             return net(x, num_steps)
         elif self.net_type=="SNN":
             return net(x, num_steps)

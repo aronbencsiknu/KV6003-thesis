@@ -84,6 +84,9 @@ plot confusion matrix
 def plot_confusion_matrix(y_pred, y_true):
     cm_prec = confusion_matrix(y_true, y_pred, labels=[0,1], normalize="pred")
     cm_sens = confusion_matrix(y_true, y_pred, labels=[0,1], normalize="true")
+
+    print("Precision:", cm_prec)
+    print("Sensitivity:", cm_sens)
     conf_matrix = cm_sens*cm_prec*2/(cm_sens+cm_prec+1e-8)
 
     fig, ax = plt.subplots(figsize=(7.5, 7.5))
@@ -94,5 +97,5 @@ def plot_confusion_matrix(y_pred, y_true):
     
     plt.xlabel('Predictions', fontsize=18)
     plt.ylabel('Targets', fontsize=15)
-    plt.title('F1-Score Matrix', fontsize=15)
+    plt.title('Confusion Matrix', fontsize=15)
     plt.show()

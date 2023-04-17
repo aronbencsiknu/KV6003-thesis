@@ -89,12 +89,14 @@ Convolutional SNN with leaky or synaptic neurons
 ################################################
 """
 class CSNN(nn.Module):
-    def __init__(self, batch_size, hidden_size=[4,32,64], beta=0.5, spike_grad=surrogate.fast_sigmoid(slope=25), neuron_type="Leaky"):
+    def __init__(self, batch_size, input_size, hidden_size=[32,64], beta=0.5, spike_grad=surrogate.fast_sigmoid(slope=25), neuron_type="Leaky"):
         super(CSNN, self).__init__()
 
         self.batch_size = batch_size
         self.neuron_type = neuron_type
         self.hidden_size = hidden_size
+
+        hidden_size.insert(0, input_size)
 
         self.neurons = nn.ModuleList() # list of neurons
         self.pools = nn.ModuleList() # list of max pooling layers
@@ -185,9 +187,9 @@ Conventional CNN for comparison
 ###############################
 """
 class CNN(nn.Module):
-    def __init__(self):
+    def __init__(self, input_size):
         super(CNN, self).__init__()
-        self.conv1 = nn.Conv1d(in_channels=4, out_channels=16, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv1d(in_channels=input_size, out_channels=16, kernel_size=3, padding=1)
         self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, padding=1)
         self.maxpool = nn.MaxPool1d(3, stride=2)
         self.adaptive_pool = nn.AdaptiveAvgPool1d(8)
@@ -224,8 +226,10 @@ GAUSSIAN TEST
 ###############################
 """
 class FeatureExtractorBody(nn.Module):
-    def __init__(self, batch_size, hidden_size=[4,32,64], beta=0.5, spike_grad=surrogate.fast_sigmoid(slope=25), neuron_type="Leaky"):
+    def __init__(self, batch_size, input_size, hidden_size=[32,64], beta=0.5, spike_grad=surrogate.fast_sigmoid(slope=25), neuron_type="Leaky"):
         super(FeatureExtractorBody, self).__init__()
+
+        hidden_size.insert(0, input_size)
 
         self.batch_size = batch_size
         self.neuron_type = neuron_type
@@ -253,9 +257,6 @@ class FeatureExtractorBody(nn.Module):
 
             if self.neuron_type == "Leaky":
                 spikes, membranes[i] = self.neurons[i](current, membranes[i])
-            
-            """elif self.neuron_type == "Synaptic":
-                spikes, syns[i], membranes[i] = self.neurons[i](current, syns[i], membranes[i])"""
 
             # record output layer membrane potentials and spikes
             mem_recs[i].append(torch.flatten(membranes[i].clone(), start_dim=1))
@@ -285,21 +286,16 @@ class FeatureExtractorBody(nn.Module):
 
 
 class ClassificationHead(nn.Module):
-    def __init__(self, batch_size, synapses, neurons, pools, hidden_size=[4,32,64], beta=0.5, spike_grad=surrogate.fast_sigmoid(slope=25), neuron_type="Leaky"):
+    def __init__(self, batch_size, synapses, neurons, pools, hidden_size=[32,64], beta=0.5, spike_grad=surrogate.fast_sigmoid(slope=25), neuron_type="Leaky"):
         super(ClassificationHead, self).__init__()
 
         self.batch_size = batch_size
         self.neuron_type = neuron_type
         self.hidden_size = hidden_size
 
-        """self.neurons = neurons # list of neurons
-        self.pools = pools # list of max pooling layers
-        self.synapses = synapses # list of synapses"""
         self.neurons = nn.ModuleList() # list of neurons
         self.pools = nn.ModuleList() # list of max pooling layers
         self.synapses = nn.ModuleList() # list of synapses
-
-        #self.adaptive_pool = nn.AdaptiveAvgPool1d(2)
 
         self.synapses.append(nn.Linear(2*hidden_size[-1], 256))
         self.neurons.append(snn.Leaky(beta=beta, spike_grad=spike_grad, learn_threshold=True))
@@ -311,21 +307,13 @@ class ClassificationHead(nn.Module):
         self.dropout = nn.Dropout(p=0.3)
 
 
-    def forward(self, spikes, membranes, mem_recs, spk_recs, gaussian=False):
-
-        #spikes = self.adaptive_pool(spikes)
-        #spikes = torch.flatten(spikes, start_dim=1)
-        #for i in range(len(self.hidden_size) - 1 , len(self.neurons)):
-        
+    def forward(self, spikes, membranes, mem_recs, spk_recs):
         for i in range(len(self.neurons)):
 
             current = self.synapses[i](spikes)
 
             if self.neuron_type == "Leaky":
                 spikes, membranes[i] = self.neurons[i](current, membranes[i])
-            
-            """elif self.neuron_type == "Synaptic":
-                spikes, syns[i], membranes[i] = self.neurons[i](current, syns[i], membranes[i])"""
 
             mem_recs[i].append(membranes[i].clone())
             spk_recs[i].append(spikes.clone())
@@ -353,7 +341,7 @@ class ClassificationHead(nn.Module):
 
 
 class OC_SCNN(nn.Module):
-    def __init__(self, batch_size, hidden_size=[4,32,64], beta=0.5, spike_grad=surrogate.fast_sigmoid(slope=25), neuron_type="Leaky"):
+    def __init__(self, batch_size, input_size, hidden_size=[32,64], beta=0.5, spike_grad=surrogate.fast_sigmoid(slope=25), neuron_type="Leaky"):
         super(OC_SCNN, self).__init__()
         self.hidden_size = hidden_size
         self.batch_size = batch_size
@@ -361,7 +349,7 @@ class OC_SCNN(nn.Module):
         self.beta = beta
         self.spike_grad = spike_grad
 
-        self.feature_extractor_body = FeatureExtractorBody(batch_size, hidden_size, beta, spike_grad, neuron_type)
+        self.feature_extractor_body = FeatureExtractorBody(batch_size, input_size, hidden_size, beta, spike_grad, neuron_type)
         self.classification_head = ClassificationHead(batch_size, self.feature_extractor_body.synapses, self.feature_extractor_body.neurons, self.feature_extractor_body.pools, hidden_size, beta, spike_grad, neuron_type)
 
     def forward(self, x, num_steps, time_first=False, gaussian=False):
@@ -379,8 +367,7 @@ class OC_SCNN(nn.Module):
             spikes = x[step]
             if not gaussian:
                 spikes, membranes_FE, spk_recs_FE, mem_recs_FE = self.feature_extractor_body(spikes, membranes_FE, mem_recs_FE, spk_recs_FE)
-
-            membranes_FC, spk_recs_FC, mem_recs_FC = self.classification_head(spikes, membranes_FC, mem_recs_FC, spk_recs_FC, gaussian=gaussian)
+            membranes_FC, spk_recs_FC, mem_recs_FC = self.classification_head(spikes, membranes_FC, mem_recs_FC, spk_recs_FC)
 
         for i in range(len(spk_recs_FC)):
             mem_recs_FC[i] = torch.stack(mem_recs_FC[i], dim=0)
@@ -403,18 +390,18 @@ class OC_SCNN(nn.Module):
 
         gaussian_features = []
 
+        gaussian_dist = np.random.normal(0, 1, 2 * self.hidden_size[-1])
+        gaussian_dist = torch.FloatTensor(gaussian_dist)
         for i in range(batch_size):
             gaussian_feature = []
-            for j in range(num_steps):
-                gaussian_dist = [random.choice([1, 0]) for _ in range(2 * self.hidden_size[-1])]
-                max = np.asarray(gaussian_dist).max()
-                min = np.asarray(gaussian_dist).min()
-
-                for i in range(len(gaussian_dist)):
-                    # normalizing values as: value' = (value - min) / (max - min)
-                    gaussian_dist[i] = (gaussian_dist[i] - min) / (max - min)
-
-                gaussian_feature.append(gaussian_dist)
-            gaussian_features.append(gaussian_feature)
+            for j in range(len(gaussian_dist)):
+                
+                item = spikegen.rate(gaussian_dist[i],num_steps=num_steps)
+                gaussian_feature.append(item)
+                
+            gaussian_features.append(torch.stack(gaussian_feature, dim=0))
             
-        return torch.FloatTensor(gaussian_features)
+        gaussian_features = torch.stack(gaussian_features, dim=0)
+        gaussian_features = torch.permute(gaussian_features, (0,2,1))
+
+        return gaussian_features
