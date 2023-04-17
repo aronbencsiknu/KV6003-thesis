@@ -4,54 +4,95 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 from snntorch import spikeplot
 import numpy as np
-
-class RasterPlot(object):
-    def __init__(self, model, test_loader, num_steps, device):
-        with torch.no_grad():
-            spk_recs = self.get_spike_data(model, test_loader, num_steps, device)
-        self.plot(spk_recs)
-
-    def plot(self, spk_recs):
-        fig = plt.figure(facecolor="w", figsize=(10, 15))
-        for i in range(len(spk_recs)):
-            spk_rec = spk_recs[i]
-            self.add_subplot(spike_data=spk_rec, fig=fig, subplt_num=int(str(len(spk_recs))+str(1)+str(i + 1)))
-
-        fig.tight_layout(pad=2)
-        plt.show()
+from sklearn.metrics import confusion_matrix 
 
 
-    def get_spike_data(self, model, test_loader, num_steps, device):
-        model.eval()
+"""
+#################
+plot spike trains
+#################
+"""
+def plot_spike_trains(model, test_loader, num_steps, device):
+    with torch.no_grad():
+        spk_recs = get_spike_data(model, test_loader, num_steps, device)
+    fig = plt.figure(facecolor="w", figsize=(10, 15))
+    for i in range(len(spk_recs)):
+        spk_rec = spk_recs[i]
+        add_subplot(spike_data=spk_rec, fig=fig, subplt_num=int(str(len(spk_recs))+str(1)+str(i + 1)))
 
-        # normal testing data
-        test_data, test_target = next(iter(test_loader))
-        test_data=test_data.to(device) # only one element in batch
-        test_target=test_target.to(device) # only one element in batch
+    fig.tight_layout(pad=2)
+    plt.show()
 
-        spk_recs, _ = model(test_data, num_steps)
-        
-        for i in range(len(spk_recs)):
-            spk_recs[i] = torch.permute(spk_recs[i],(1,0,2))[0]
+def get_spike_data(model, test_loader, num_steps, device):
+    model.eval()
 
-        spk_recs.insert(0, test_data[0])
-        return spk_recs
+    # normal testing data
+    test_data, test_target = next(iter(test_loader))
+    test_data=test_data.to(device) # only one element in batch
+    test_target=test_target.to(device) # only one element in batch
 
-    def add_subplot(self,spike_data,fig,subplt_num):
-        spikeplot.raster(spike_data, fig.add_subplot(subplt_num), s=1.5, c="blue")
+    spk_recs, _ = model(test_data, num_steps)
+    
+    for i in range(len(spk_recs)):
+        spk_recs[i] = torch.permute(spk_recs[i],(1,0,2))[0]
 
-        ax = fig.gca()
-        ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+    spk_recs.insert(0, test_data[0])
+    return spk_recs
 
-class ManipulationPlot(object):
-    def __init__(self, manipulated_data):
-        fig, axs = plt.subplots(2, 1, figsize=(10, 5))
-        plot_range = [0, 1400]
-        for y in range(2):
-                for i in range(plot_range[0], plot_range[1]):
-                    if i in manipulated_data.manipulation_indeces:
-                        axs[y].axvline(x = i, color = 'r', label = 'axvline - full height', linestyle='dotted', linewidth=0.5)
-                    axs[y].plot(manipulated_data.data[y][plot_range[0]:plot_range[1]], color='b', linewidth=1)
+def add_subplot(spike_data,fig,subplt_num):
+    spikeplot.raster(spike_data, fig.add_subplot(subplt_num), s=1.5, c="blue")
 
-        plt.show()
+    ax = fig.gca()
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
+
+"""
+#################################################
+plot data with injected manipulations highlighted
+#################################################
+"""
+def plot_manipulated_data(manipulated_data):
+    fig, axs = plt.subplots(2, 1, figsize=(10, 5))
+    plot_range = [0, 1400]
+    for y in range(2):
+            for i in range(plot_range[0], plot_range[1]):
+                if i in manipulated_data.manipulation_indeces:
+                    axs[y].axvline(x = i, color = 'r', label = 'axvline - full height', linestyle='dotted', linewidth=0.5)
+                axs[y].plot(manipulated_data.data[y][plot_range[0]:plot_range[1]], color='b', linewidth=1)
+
+    plt.show()
+
+"""
+#######################
+plot manipulated window
+#######################
+"""
+def plot_manipulated_window(data, targets):
+    for i in range(len(data)):
+        if targets[i] == 1:
+            print("Manipulated sample:", i)
+            plt.plot(data[i])
+            break
+
+    plt.show()
+
+"""
+#####################
+plot confusion matrix
+#####################
+"""
+def plot_confusion_matrix(y_pred, y_true):
+    
+    cm_prec = confusion_matrix(y_true, y_pred, labels=[0,1], normalize="pred")
+    cm_sens = confusion_matrix(y_true, y_pred, labels=[0,1], normalize="true")
+    conf_matrix = cm_sens*cm_prec*2/(cm_sens+cm_prec+1e-8)
+    fig, ax = plt.subplots(figsize=(7.5, 7.5))
+    ax.matshow(conf_matrix, alpha=0.5, cmap=plt.cm.Blues)
+    for i in range(conf_matrix.shape[0]):
+        for j in range(conf_matrix.shape[1]):
+            ax.text(x=j, y=i,s=conf_matrix[i, j], va='center', ha='center', size='xx-large')
+    
+    plt.xlabel('Predictions', fontsize=18)
+    plt.ylabel('Actuals', fontsize=18)
+    plt.title('F1-Score Matrix', fontsize=18)
+    plt.show()

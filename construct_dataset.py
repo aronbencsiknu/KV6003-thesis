@@ -99,9 +99,9 @@ class ExtractFeatures:
 
         # P_t and V_t
         self.features.append(self.original_bid_price)
-        self.features.append(self.original_ask_price)
+        #self.features.append(self.original_ask_price)
         self.features.append(self.original_bid_volume)
-        self.features.append(self.original_ask_volume)
+        """self.features.append(self.original_ask_volume)
 
         # dPt/d_t and dV_t/d_t
         self.features.append(self.take_derivative(self.original_bid_price))
@@ -122,7 +122,7 @@ class ExtractFeatures:
         self.features.append(self.extract_high_frequencies(self.original_ask_price))
 
         self.features.append(self.extract_high_frequencies(self.original_bid_volume))
-        self.features.append(self.extract_high_frequencies(self.original_ask_volume))
+        self.features.append(self.extract_high_frequencies(self.original_ask_volume))"""
 
         # clip the features to the same length
         min = len(self.features[0])

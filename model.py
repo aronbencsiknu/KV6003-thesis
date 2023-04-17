@@ -12,6 +12,7 @@ import random
 Feedforward SNN with leaky or synaptic neurons
 ##############################################
 """
+
 class SNN(nn.Module):
     
     def __init__(self, input_size, hidden_size, output_size, beta=0.5, alpha=0.5, spike_grad=surrogate.fast_sigmoid(slope=25), neuron_type="Synaptic"):

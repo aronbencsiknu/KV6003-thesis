@@ -30,7 +30,6 @@ class mse_count_loss(LossFunctions):
 
     def __call__(self, spk_out, targets):
         _, num_steps, num_outputs = self._prediction_check(spk_out)
-        loss_fn = nn.MSELoss()
 
         # generate ideal spike-count in C sized vector
         on_target = int(num_steps * self.correct_rate)
@@ -44,6 +43,5 @@ class mse_count_loss(LossFunctions):
 
         spike_count = torch.sum(spk_out, 0)  # B x C
 
-        #loss = loss_fn(spike_count, spike_count_target)
         loss = torch.mean(torch.square(spike_count_target - spike_count) * self.class_weights)
         return loss / num_steps

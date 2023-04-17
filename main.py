@@ -5,10 +5,10 @@ from construct_dataset import CustomDataset
 from receptive_encoder import CUBALayer
 from model import SNN, CSNN, CNN, CSNNGaussian
 from options import Options
-from plots import RasterPlot, ManipulationPlot
+import plots
 from metrics import Metrics
 from early_stopping import EarlyStopping
-import sys
+import pathlib
 
 # external imports
 import torch
@@ -16,7 +16,6 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix 
 import wandb
 
 opt = Options().parse()
@@ -42,26 +41,18 @@ unmanipulated_data = LobsterData()
 if opt.train_method == "multiclass":
   X, y, means = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length)
   X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
   X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1, random_state=42)
-else:
 
+else:
   X_train, y_train, _ = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, False, opt.window_length, opt.window_overlap, opt.manipulation_length)
   X_test, y_test, _ = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length)
-
-
   X_train, _, y_train, _ = train_test_split(X_train, y_train, test_size=0.2, random_state=42)
-  #X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1, random_state=42)
-
   X_temp, X_test, y_temp, y_test = train_test_split(X_test, y_test, test_size=0.2, random_state=42)
   _, X_val, _, y_val = train_test_split(X_temp, y_temp, test_size=0.1, random_state=42)
 
 if opt.input_encoding == "population":
 
-  feature_dimensionality = 16
-
-  """for i in range(feature_dimensionality):
-    means.append(np.mean(X_train[i], axis=0))"""
+  feature_dimensionality = np.shape(X_train)[2]
 
   receptive_encoder = CUBALayer(feature_dimensionality=feature_dimensionality, population_size=10, means=means, plot_tuning_curves=True)
   receptive_encoder.display_tuning_curves()
@@ -71,13 +62,6 @@ else:
 train_set = CustomDataset(data=X_train, targets=y_train, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type, pop_encoder=receptive_encoder)
 test_set = CustomDataset(data=X_test, targets=y_test, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type, pop_encoder=receptive_encoder)
 val_set = CustomDataset(data=X_val, targets=y_val, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type, pop_encoder=receptive_encoder)
-
-for i in range(1000):
-  if y_train[i] == 1:
-    print("Manipulated sample:", i)
-    plt.plot(X_train[i])
-    plt.show()
-    break
 
 print("\n----------------------------------\n")
 print("Class counts: ")
@@ -94,9 +78,8 @@ print("Test set size:\t\t", len(test_set))
 print("Validation set size:\t", len(val_set))
 print("\n----------------------------------\n")
 
-for batch_idx, (data, target) in enumerate(train_loader):
-  input_size = np.shape(data)[2]
-  break
+data, _ = next(iter(train_loader))
+input_size = np.shape(data)[2]
 
 metrics = Metrics(opt.net_type, opt.set_type, opt.output_decoding, train_set, opt.device, opt.num_steps)
 early_stopping = EarlyStopping(patience=20, verbose=True)
@@ -112,7 +95,6 @@ elif opt.net_type=="SNN":
 elif opt.net_type=="CNN":
   model = CNN().to(opt.device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=opt.learning_rate, betas=(0.9, 0.999))
-
 
 def train(model,train_loader,optimizer,epoch, logging_index):
   model.train()
@@ -161,6 +143,11 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
   if testing:
     print("loading best model...")
     model.load_state_dict(torch.load('checkpoint.pt')) # load best model
+
+    if opt.save_model:
+      model_name = opt.net_type + "_" + opt.input_encoding + "_" + opt.output_decoding + "_" + opt.neuron_type + "_" + opt.set_type + "_" + opt.train_method + ".pt"
+      path = pathlib.Path("trained_models") / model_name
+      torch.save(model.state_dict(), path)
 
   with torch.no_grad():
     for batch_idx, (data, target) in enumerate(dataloader):
@@ -228,27 +215,10 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
 
     return logging_index, stop_early
 
-def plot_confusion_matrix(y_pred, y_true):
-    
-    cm_prec = confusion_matrix(y_true, y_pred, labels=[0,1], normalize="pred")
-    cm_sens = confusion_matrix(y_true, y_pred, labels=[0,1], normalize="true")
-    conf_matrix = cm_sens*cm_prec*2/(cm_sens+cm_prec+1e-8)
-    fig, ax = plt.subplots(figsize=(7.5, 7.5))
-    ax.matshow(conf_matrix, alpha=0.5, cmap=plt.cm.Blues)
-    for i in range(conf_matrix.shape[0]):
-        for j in range(conf_matrix.shape[1]):
-            ax.text(x=j, y=i,s=conf_matrix[i, j], va='center', ha='center', size='xx-large')
-    
-    plt.xlabel('Predictions', fontsize=18)
-    plt.ylabel('Actuals', fontsize=18)
-    plt.title('F1-Score Matrix', fontsize=18)
-    plt.show()
-
 logging_index_train = 0
 logging_index_forward_eval = 0
 stop_early = False
 
-RasterPlot(model, test_loader, opt.num_steps, opt.device)
 for epoch in range(1, opt.num_epochs+1):
 
   model, logging_index_train = train(model,train_loader,optimizer,epoch, logging_index_train)
@@ -259,8 +229,6 @@ for epoch in range(1, opt.num_epochs+1):
 
 logging_index_forward_eval = 0
 forward_pass_eval(model, test_loader, logging_index_forward_eval, testing=True)
-
-RasterPlot(model, test_loader, opt.num_steps, opt.device)
 
 if opt.wandb_logging:
   wandb.finish()
