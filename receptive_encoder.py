@@ -6,6 +6,7 @@ import torch
 import random
 import math
 from matplotlib.ticker import MaxNLocator
+from progress.bar import ShadyBar
 
 class CUBANeuron(nn.Module):
     def __init__(self, tau, g, Vth, dt, T):
@@ -85,9 +86,11 @@ class CUBAPopulation():
         intercepts = np.linspace(intercept_low+0.001, intercept_high*2, num=count)
         #intercepts = np.logspace(np.log10(intercept_low+0.001), np.log10(intercept_high), num=count)
         
-        print("Tuning neuronal fields...")
+        #print("Tuning neuronal fields...")
+        print("\n")
+        bar = ShadyBar("Tuning neurons", max=count)
         for i in range(count):
-            
+            bar.next()
             intercept_current = intercepts[i]
 
             if intercept_current > 0:
@@ -109,9 +112,8 @@ class CUBAPopulation():
                 last_voltage = test_neuron.voltages[-1]
 
             gain.append(g_min)
-            print("Done with neuron " + str(i+1) + "/" + str(count))
 
-        print("Done")
+        bar.finish()
         return gain
     
     def reset_neurons(self):

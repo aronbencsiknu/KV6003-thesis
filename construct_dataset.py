@@ -98,17 +98,17 @@ class ExtractFeatures:
         self.features = []
 
         # P_t and V_t
-        """self.features.append(self.original_bid_price)
+        self.features.append(self.original_bid_price)
         self.features.append(self.original_ask_price)
-        self.features.append(self.original_bid_volume)
+        """self.features.append(self.original_bid_volume)
         self.features.append(self.original_ask_volume)"""
 
         # dPt/d_t and dV_t/d_t
-        self.features.append(self.take_derivative(self.original_bid_price))
+        """self.features.append(self.take_derivative(self.original_bid_price))
         self.features.append(self.take_derivative(self.original_ask_price))
 
         self.features.append(self.take_derivative(self.original_bid_volume))
-        self.features.append(self.take_derivative(self.original_ask_volume))
+        self.features.append(self.take_derivative(self.original_ask_volume))"""
 
         # dPhat_t/d_t and dVhat_t/d_t
         """self.features.append(self.take_derivative(self.extract_high_frequencies(self.original_bid_price)))
@@ -236,7 +236,7 @@ class CustomDataset(Dataset):
             self.receptive_encoder = pop_encoder
 
         # encode data to spikes using the defined encoding method
-        print()
+        print("\n")
         bar = ShadyBar("Encoding set", max=np.shape(self.data)[0])
         for i in range(np.shape(self.data)[0]):
             bar.next()
@@ -268,6 +268,7 @@ class CustomDataset(Dataset):
             target=self.targets[i]
             self.db.append([item,target])
         
+        bar.finish()
         self.n_samples_per_class = self.get_class_counts()
 
     def __len__(self):

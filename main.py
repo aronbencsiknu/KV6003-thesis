@@ -348,3 +348,5 @@ else:
 
 if opt.wandb_logging:
   wandb.finish()
+
+plots.plot_spike_trains(model, test_loader, opt.num_steps, opt.device)
