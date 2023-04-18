@@ -15,7 +15,7 @@ Feedforward SNN with leaky or synaptic neurons
 
 class SNN(nn.Module):
     
-    def __init__(self, input_size, hidden_size, output_size, beta=0.5, alpha=0.5, spike_grad=surrogate.fast_sigmoid(slope=25), neuron_type="Synaptic"):
+    def __init__(self, input_size, hidden_size, output_size=2, beta=0.5, alpha=0.5, dropout=0.4, spike_grad=surrogate.fast_sigmoid(slope=25), neuron_type="Synaptic", learn_beta=False, learn_alpha=False, learn_threshold=True):
         super().__init__()
 
         self.neuron_type = neuron_type
@@ -31,12 +31,12 @@ class SNN(nn.Module):
         for i in range(len(size) - 1):
             self.synapses.append(nn.Linear(size[i], size[i + 1], bias=False))
             if self.neuron_type == "Leaky":
-                self.neurons.append(snn.Leaky(beta=beta, spike_grad=spike_grad, learn_beta=True))
+                self.neurons.append(snn.Leaky(beta=beta, spike_grad=spike_grad, learn_beta=learn_beta, learn_threshold=learn_threshold))
 
             elif self.neuron_type == "Synaptic":
-                self.neurons.append(snn.Synaptic(alpha=alpha, beta=beta, threshold=0.2, spike_grad=spike_grad, learn_beta=True, learn_threshold=True))
+                self.neurons.append(snn.Synaptic(alpha=alpha, beta=beta, threshold=0.2, spike_grad=spike_grad, learn_beta=learn_beta, learn_threshold=learn_threshold, learn_alpha=learn_alpha))
         
-        self.dropout = nn.Dropout(p=0.4)
+        self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x, num_steps, time_first=False):
 
@@ -398,7 +398,7 @@ class OC_SCNN(nn.Module):
                 
                 item = spikegen.rate(gaussian_dist[i],num_steps=num_steps)
                 gaussian_feature.append(item)
-                
+
             gaussian_features.append(torch.stack(gaussian_feature, dim=0))
             
         gaussian_features = torch.stack(gaussian_features, dim=0)

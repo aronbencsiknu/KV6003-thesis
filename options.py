@@ -15,9 +15,10 @@ class Options(object):
         self.argparser.add_argument("-wb", "--wandb_logging", action='store_true', help="enable logging to Weights&Biases")
         self.argparser.add_argument("--wandb_project", type=str, default="spiking-neural-network-experiments", help="Weights&Biases project name")
         self.argparser.add_argument("--wandb_entity", type=str, default="aronbencsik", help="Weights&Biases entity name")
-        self.argparser.add_argument("--net_type", type=str, default="CSNN",choices=["SNN", "CSNN", "CNN", "OC_SCNN"], help="Type of network to use (SNN, CSNN, CNN, OC_SCNN)")
+        self.argparser.add_argument("--net_type", type=str, default="SNN",choices=["SNN", "CSNN", "CNN", "OC_SCNN"], help="Type of network to use (SNN, CSNN, CNN, OC_SCNN)")
         self.argparser.add_argument("-s", "--save_model", action='store_true', help="Save the model when finished training")
         self.argparser.add_argument("-l", "--load_model", action='store_true', help="Skip training and load a model")
+        self.argparser.add_argument("-sw", "--sweep", action='store_true', help="Perform a hyperparameter sweep with Weights&Biases")
         self.argparser.add_argument("--num_epochs", type=int, default=100, help="Number of epochs to train for")
         self.argparser.add_argument("--batch_size", type=int, default=64, help="Batch size")
         self.argparser.add_argument("--num_steps", type=int, default=100, help="Number of time steps to simulate")
@@ -60,5 +61,8 @@ class Options(object):
 
         self.opt.wandb_group = self.opt.net_type + "_" + self.opt.input_encoding + "_" + self.opt.output_decoding + "_" + self.opt.neuron_type
         self.opt.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+        """if self.opt.sweep:
+            self.opt.input_encoding = "population"""
 
         return self.opt

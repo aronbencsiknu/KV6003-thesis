@@ -87,9 +87,9 @@ class CUBAPopulation():
         
         print("Tuning neuronal fields...")
         for i in range(count):
-            #intercept_current = random.uniform(intercept_low, intercept_high)
+            
             intercept_current = intercepts[i]
-            #intercept_current = intercept
+
             if intercept_current > 0:
                 multiplier = 1
             else:
@@ -196,7 +196,7 @@ class CUBALayer():
         for i in range(self.feature_dimensionality):
             plt.subplot(1, self.feature_dimensionality, i+1)
             temp = self.populations[i].display_tuning_curve()
-            plt.plot(temp[0],temp[1] , linewidth=0.5)
+            plt.plot(temp[0],temp[1] , linewidth=0.7)
         
         plt.show()
 

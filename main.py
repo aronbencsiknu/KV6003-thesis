@@ -20,21 +20,77 @@ import wandb
 
 opt = Options().parse()
 
-if opt.wandb_logging:
-    
-    print("\n#########################################")
-    print("#########################################\n")
-    print("!!IMPORTANT!! You need to create a WandB account and paste your authorization key in options.py to use this.")
-    print("\n#########################################")
-    print("#########################################\n")
+if opt.wandb_logging or opt.sweep:
+  print("\n#########################################")
+  print("#########################################\n")
+  print("!!IMPORTANT!! You need to create a WandB account and paste your authorization key in options.py to use this.")
+  print("\n#########################################")
+  print("#########################################\n")
 
-    key=opt.wandb_key
-    wandb.login(key=key)
-    wandb.init(project=opt.wandb_project, 
-               entity=opt.wandb_entity, 
-               group=opt.wandb_group,
-               settings=wandb.Settings(start_method="thread"),
-               config=opt)
+if opt.wandb_logging:
+
+  # init wandb logging
+  key=opt.wandb_key
+  wandb.login(key=key)
+  wandb.init(project=opt.wandb_project, 
+              entity=opt.wandb_entity, 
+              group=opt.wandb_group,
+              settings=wandb.Settings(start_method="thread"),
+              config=opt)
+  
+if opt.sweep:
+
+  # init wandb sweep
+  key=opt.wandb_key
+  wandb.login(key=key)
+  sweep_config = {
+  'method': 'random'
+  }
+
+  metric = {
+  'name': 'loss',
+  'goal': 'minimize'   
+  }
+
+  sweep_config['metric'] = metric
+
+  # hyperparameter dictionary
+  parameters_dict = {
+  'optimizer': {
+      'values': ['adam', 'adamW']
+      },
+  'num_hidden': {
+      'values': [1, 2, 3, 4, 5]
+      },
+  'hidden_size': {
+      'values': [32, 64, 128, 256, 512]
+      },
+  'dropout': {
+        'values': [0.1, 0.3, 0.4, 0.5]
+      },
+  'learning_rate': {'max': 0.1, 'min': 0.0001},
+
+  'NeuronType': {
+      'values': ['Leaky', 'Synaptic']
+      },
+  'learn_alpha': {
+      'values': [True, False]
+      },
+  'learn_beta': { 
+      'values': [True, False]
+      },
+  'learn_threshold': {
+      'values': [True, False]
+      },
+  'surrogate_gradient': {
+      'values': ["atan", "sigmoid", "fast_sigmoid"]
+      },
+      
+  }
+
+  sweep_config['parameters'] = parameters_dict
+
+  sweep_id = wandb.sweep(sweep_config, project="snn-sweeps")
 
 if opt.train_method == "multiclass":
   oneclass = False
@@ -47,8 +103,7 @@ if opt.train_method == "multiclass":
 else:
   oneclass = True
   train_data = LobsterData(path="Amazon")
-
-  test_data = LobsterData(path="Amazon")
+  test_data = LobsterData(path="Apple")
 
   X_train, y_train, _ = construct_dataset.prepare_data(train_data.orderbook_data, False, opt.window_length, opt.window_overlap, opt.manipulation_length)
   X_test, y_test, _ = construct_dataset.prepare_data(test_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length)
@@ -112,6 +167,8 @@ elif opt.net_type=="CSNN":
   model = CSNN(batch_size=opt.batch_size, input_size=feature_dimensionality).to(opt.device)
   
 elif opt.net_type=="SNN":
+  print("HELLO")
+  print("Input size:\t", input_size)
   model = SNN(input_size=input_size, hidden_size=opt.hidden_size, output_size=2).to(opt.device)
 
 elif opt.net_type=="CNN":
@@ -119,9 +176,9 @@ elif opt.net_type=="CNN":
 
 optimizer = torch.optim.AdamW(model.parameters(), lr=opt.learning_rate, betas=(0.9, 0.999))
 
-def train(model,train_loader,optimizer,epoch, logging_index):
+def train_epoch(net, train_loader,optimizer,epoch, logging_index):
 
-  model.train()
+  net.train()
   loss_val=0
   print("\nEpoch:\t\t",epoch,"/",opt.num_epochs)
   for batch_idx, (data, target) in enumerate(train_loader):
@@ -130,12 +187,12 @@ def train(model,train_loader,optimizer,epoch, logging_index):
 
       if opt.train_method == "oneclass" and batch_idx % 2 == 0:
         
-        data = model.generate_gaussian_feature(opt.batch_size, opt.num_steps).to(opt.device)
+        data = net.generate_gaussian_feature(opt.batch_size, opt.num_steps).to(opt.device)
         target = torch.ones(opt.batch_size, dtype=torch.long).to(opt.device)
-        output = metrics.forward_pass(model, data, opt.num_steps, gaussian=True)
+        output = metrics.forward_pass(net, data, opt.num_steps, gaussian=True)
 
       else:
-        output = metrics.forward_pass(model, data, opt.num_steps)
+        output = metrics.forward_pass(net, data, opt.num_steps)
 
       loss = metrics.loss(output,target)
       optimizer.zero_grad()
@@ -151,7 +208,31 @@ def train(model,train_loader,optimizer,epoch, logging_index):
   loss_val /= len(train_loader)
   print("Train loss:\t%.3f" % loss_val)
  
-  return model, logging_index
+  return net, logging_index, loss_val
+
+def sweep_train(config=None):
+    
+    # Initialize a new wandb run
+    with wandb.init(config=config):
+        
+      # If called by wandb.agent, as below,
+      # this config will be set by Sweep Controller
+      config = wandb.config
+
+      hidden_size = [config.hidden_size]*config.num_hidden
+
+      # replace previously defined network with the one initialized by wandb sweep
+      network = SNN(input_size=input_size, hidden_size=hidden_size, dropout=config.dropout, neuron_type=config.NeuronType, learn_alpha=config.learn_alpha, learn_beta=config.learn_beta, learn_threshold=config.learn_threshold).to(opt.device)
+
+      if config.optimizer == "adam":
+          optimizer = torch.optim.Adam(network.parameters(), lr=config.learning_rate)
+      elif config.optimizer == "adamW":
+          optimizer = torch.optim.AdamW(network.parameters(), lr=config.learning_rate)
+
+      for epoch in range(opt.num_epochs):
+          network, _, _ = train_epoch(network, train_loader, optimizer, epoch, logging_index=0)
+          _, _, avg_loss = forward_pass_eval(network, val_loader, logging_index=0)
+          wandb.log({"loss": avg_loss, "epoch": epoch}) 
 
 def forward_pass_eval(model,dataloader, logging_index, testing=False):
 
@@ -188,13 +269,6 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
       data=data.to(opt.device)
       target=target.to(opt.device)
 
-      """if opt.train_method == "oneclass" and batch_idx % 2 == 0:
-        print("Generating gaussian feature...")
-        data = model.generate_gaussian_feature(opt.batch_size, opt.num_steps).to(opt.device)
-        target = torch.ones(opt.batch_size, dtype=torch.long).to(opt.device)
-        output = metrics.forward_pass(model, data, opt.num_steps, gaussian=True)
-
-      else:"""
       output = metrics.forward_pass(model, data, opt.num_steps)
 
       acc_current = metrics.accuracy(output,target)
@@ -250,24 +324,27 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
       print("Early stopping")
       stop_early = True
 
-    return logging_index, stop_early
+    return logging_index, stop_early, loss
 
 logging_index_train = 0
 logging_index_forward_eval = 0
 stop_early = False
 
-if not opt.load_model:
+if not opt.load_model and not opt.sweep:
   for epoch in range(1, opt.num_epochs+1):
 
-    model, logging_index_train = train(model,train_loader,optimizer,epoch, logging_index_train)
-    logging_index_forward_eval, stop_early = forward_pass_eval(model, val_loader, logging_index_forward_eval)
+    model, logging_index_train, _ = train_epoch(model,train_loader,optimizer,epoch, logging_index_train)
+    logging_index_forward_eval, stop_early, _ = forward_pass_eval(model, val_loader, logging_index_forward_eval)
 
     if stop_early:
       break
 
   logging_index_forward_eval = 0
 
-forward_pass_eval(model, test_loader, logging_index_forward_eval, testing=True)
+if opt.sweep:
+  wandb.agent(sweep_id, sweep_train, count=50)
+else:
+  forward_pass_eval(model, test_loader, logging_index_forward_eval, testing=True)
 
 if opt.wandb_logging:
   wandb.finish()
