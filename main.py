@@ -91,7 +91,7 @@ if opt.sweep:
 
   sweep_config['parameters'] = parameters_dict
 
-  sweep_id = wandb.sweep(sweep_config, project="snn-sweeps")
+  sweep_id = wandb.sweep(sweep_config, project="snn-sweeps_price-only_population")
 
 if opt.train_method == "multiclass":
   oneclass = False
@@ -119,7 +119,7 @@ if opt.input_encoding == "population":
  
   receptive_encoder = CUBALayer(feature_dimensionality=feature_dimensionality, population_size=10, means=means, plot_tuning_curves=True)
   opt.num_steps = int(receptive_encoder.T/receptive_encoder.dt) * opt.window_length # override num_steps
-  receptive_encoder.display_tuning_curves() # plot tuning curves
+  #receptive_encoder.display_tuning_curves() # plot tuning curves
 
 else:
   receptive_encoder = None
@@ -352,7 +352,7 @@ if not opt.load_model and not opt.sweep:
   logging_index_forward_eval = 0
 
 if opt.sweep:
-  wandb.agent(sweep_id, sweep_train, count=50)
+  wandb.agent(sweep_id, sweep_train, count=100)
 else:
   forward_pass_eval(model, test_loader, logging_index_forward_eval, testing=True)
 
