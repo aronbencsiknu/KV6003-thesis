@@ -9,6 +9,7 @@ import plots
 from metrics import Metrics
 from early_stopping import EarlyStopping
 import pathlib
+from snntorch import surrogate
 
 # external imports
 import torch
@@ -220,9 +221,18 @@ def sweep_train(config=None):
       config = wandb.config
 
       hidden_size = [config.hidden_size]*config.num_hidden
+      
+      if config.surrogate_gradient == "atan":
+        spike_grad = surrogate.atan()
+
+      elif config.surrogate_gradient == "sigmoid":
+        spike_grad = surrogate.sigmoid()
+      
+      elif config.surrogate_gradient == "fast_sigmoid":
+        spike_grad = surrogate.fast_sigmoid()
 
       # replace previously defined network with the one initialized by wandb sweep
-      network = SNN(input_size=input_size, hidden_size=hidden_size, dropout=config.dropout, neuron_type=config.NeuronType, learn_alpha=config.learn_alpha, learn_beta=config.learn_beta, learn_threshold=config.learn_threshold).to(opt.device)
+      network = SNN(input_size=input_size, hidden_size=hidden_size, dropout=config.dropout, neuron_type=config.NeuronType, learn_alpha=config.learn_alpha, learn_beta=config.learn_beta, learn_threshold=config.learn_threshold, spike_grad=spike_grad).to(opt.device)
 
       if config.optimizer == "adam":
           optimizer = torch.optim.Adam(network.parameters(), lr=config.learning_rate)
