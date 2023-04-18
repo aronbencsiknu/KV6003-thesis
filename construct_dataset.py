@@ -99,7 +99,7 @@ class ExtractFeatures:
 
         # P_t and V_t
         self.features.append(self.original_bid_price)
-        self.features.append(self.original_ask_price)
+        #self.features.append(self.original_ask_price)
         """self.features.append(self.original_bid_volume)
         self.features.append(self.original_ask_volume)"""
 

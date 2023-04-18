@@ -83,7 +83,7 @@ class CUBAPopulation():
     def tune_receptive_fields(self, count, intercept_low, intercept_high, tau, dt, T, Vth):
         gain = []
         tau_list = np.linspace(0.1, 0.9, num=count)
-        intercepts = np.linspace(intercept_low+0.001, intercept_high*2, num=count)
+        intercepts = np.linspace(intercept_low+0.001, intercept_high, num=count)
         #intercepts = np.logspace(np.log10(intercept_low+0.001), np.log10(intercept_high), num=count)
         
         #print("Tuning neuronal fields...")
@@ -148,7 +148,7 @@ class CUBAPopulation():
 
 
 class CUBALayer():
-    def __init__(self, feature_dimensionality, population_size, means, plot_tuning_curves=True, tau=0.8, g=-5.0, Vth=1, dt=0.01, T=0.1):
+    def __init__(self, feature_dimensionality, population_size, means, plot_tuning_curves=True, tau=0.8, g=-5.0, Vth=1, dt=0.01, T=0.5):
 
         self.feature_dimensionality = feature_dimensionality # number of populations
         self.population_size = population_size # number of neurons in each population
@@ -198,7 +198,9 @@ class CUBALayer():
         for i in range(self.feature_dimensionality):
             plt.subplot(1, self.feature_dimensionality, i+1)
             temp = self.populations[i].display_tuning_curve()
-            plt.plot(temp[0],temp[1] , linewidth=0.7)
+            plt.plot(temp[0],temp[1] , linewidth=0.9)
+            plt.ylabel("Time")
+            plt.xlabel("Current")
         
         plt.show()
 

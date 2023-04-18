@@ -119,7 +119,7 @@ if opt.input_encoding == "population":
  
   receptive_encoder = CUBALayer(feature_dimensionality=feature_dimensionality, population_size=10, means=means, plot_tuning_curves=True)
   opt.num_steps = int(receptive_encoder.T/receptive_encoder.dt) * opt.window_length # override num_steps
-  #receptive_encoder.display_tuning_curves() # plot tuning curves
+  receptive_encoder.display_tuning_curves() # plot tuning curves
 
 else:
   receptive_encoder = None
@@ -168,8 +168,6 @@ elif opt.net_type=="CSNN":
   model = CSNN(batch_size=opt.batch_size, input_size=feature_dimensionality).to(opt.device)
   
 elif opt.net_type=="SNN":
-  print("HELLO")
-  print("Input size:\t", input_size)
   model = SNN(input_size=input_size, hidden_size=opt.hidden_size, output_size=2).to(opt.device)
 
 elif opt.net_type=="CNN":
@@ -241,8 +239,8 @@ def sweep_train(config=None):
 
       for epoch in range(opt.num_epochs):
           network, _, _ = train_epoch(network, train_loader, optimizer, epoch, logging_index=0)
-          _, _, avg_loss = forward_pass_eval(network, val_loader, logging_index=0)
-          wandb.log({"loss": avg_loss, "epoch": epoch}) 
+          _, _, avg_loss, avg_acc = forward_pass_eval(network, val_loader, logging_index=0)
+          wandb.log({"loss": avg_loss, "epoch": epoch, "accuracy": avg_acc}) 
 
 def forward_pass_eval(model,dataloader, logging_index, testing=False):
 
@@ -334,7 +332,7 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
       print("Early stopping")
       stop_early = True
 
-    return logging_index, stop_early, loss
+    return logging_index, stop_early, loss, acc
 
 logging_index_train = 0
 logging_index_forward_eval = 0
@@ -344,7 +342,7 @@ if not opt.load_model and not opt.sweep:
   for epoch in range(1, opt.num_epochs+1):
 
     model, logging_index_train, _ = train_epoch(model,train_loader,optimizer,epoch, logging_index_train)
-    logging_index_forward_eval, stop_early, _ = forward_pass_eval(model, val_loader, logging_index_forward_eval)
+    logging_index_forward_eval, stop_early, _, _ = forward_pass_eval(model, val_loader, logging_index_forward_eval)
 
     if stop_early:
       break
