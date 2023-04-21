@@ -8,8 +8,7 @@ from options import Options
 import plots
 from metrics import Metrics
 from early_stopping import EarlyStopping
-import pathlib
-from snntorch import surrogate
+from sweep import SweepHandler
 
 # external imports
 import torch
@@ -18,6 +17,9 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import wandb
+import pathlib
+from snntorch import surrogate
+import copy
 
 opt = Options().parse()
 
@@ -29,7 +31,6 @@ if opt.wandb_logging or opt.sweep:
   print("#########################################\n")
 
 if opt.wandb_logging:
-
   # init wandb logging
   key=opt.wandb_key
   wandb.login(key=key)
@@ -40,58 +41,14 @@ if opt.wandb_logging:
               config=opt)
   
 if opt.sweep:
-
+  sweep_handler = SweepHandler()
   # init wandb sweep
   key=opt.wandb_key
   wandb.login(key=key)
-  sweep_config = {
-  'method': 'random'
-  }
-
-  metric = {
-  'name': 'loss',
-  'goal': 'minimize'   
-  }
-
-  sweep_config['metric'] = metric
-
-  # hyperparameter dictionary
-  parameters_dict = {
-  'optimizer': {
-      'values': ['adam', 'adamW']
-      },
-  'num_hidden': {
-      'values': [1, 2, 3, 4, 5]
-      },
-  'hidden_size': {
-      'values': [32, 64, 128, 256, 512]
-      },
-  'dropout': {
-        'values': [0.1, 0.3, 0.4, 0.5]
-      },
-  'learning_rate': {'max': 0.1, 'min': 0.0001},
-
-  'NeuronType': {
-      'values': ['Leaky', 'Synaptic']
-      },
-  'learn_alpha': {
-      'values': [True, False]
-      },
-  'learn_beta': { 
-      'values': [True, False]
-      },
-  'learn_threshold': {
-      'values': [True, False]
-      },
-  'surrogate_gradient': {
-      'values': ["atan", "sigmoid", "fast_sigmoid"]
-      },
-      
-  }
-
-  sweep_config['parameters'] = parameters_dict
-
-  sweep_id = wandb.sweep(sweep_config, project="snn-sweeps_price-only_population")
+  sweep_config = {'method': 'random'}
+  sweep_config['metric'] = sweep_handler.metric
+  sweep_config['parameters'] = sweep_handler.parameters_dict
+  sweep_id = wandb.sweep(sweep_config, project="test")
 
 if opt.train_method == "multiclass":
   oneclass = False
@@ -116,10 +73,9 @@ else:
 feature_dimensionality = np.shape(X_train)[2]
 
 if opt.input_encoding == "population":
- 
-  receptive_encoder = CUBALayer(feature_dimensionality=feature_dimensionality, population_size=10, means=means, plot_tuning_curves=True)
+  receptive_encoder = CUBALayer(feature_dimensionality=feature_dimensionality, population_size=10, means=means)
   opt.num_steps = int(receptive_encoder.T/receptive_encoder.dt) * opt.window_length # override num_steps
-  receptive_encoder.display_tuning_curves() # plot tuning curves
+  #receptive_encoder.display_tuning_curves() # plot tuning curves
 
 else:
   receptive_encoder = None
@@ -128,11 +84,13 @@ train_set = CustomDataset(data=X_train, targets=y_train, num_steps=opt.num_steps
 test_set = CustomDataset(data=X_test, targets=y_test, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type, pop_encoder=receptive_encoder)
 val_set = CustomDataset(data=X_val, targets=y_val, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type, pop_encoder=receptive_encoder)
 
+print("Train set size:\t\t", np.shape(train_set[0][0]))
 print("\n----------------------------------\n")
 print("Class counts: ")
 print("\t- 0:", train_set.n_samples_per_class[0])
 print("\t- 1:", train_set.n_samples_per_class[1])
 print("\n----------------------------------\n")
+
 
 train_loader = DataLoader(train_set, batch_size=opt.batch_size, shuffle=True)
 test_loader = DataLoader(test_set, batch_size=opt.batch_size, shuffle=True)
@@ -147,7 +105,7 @@ data, _ = next(iter(train_loader))
 input_size = np.shape(data)[2]
 
 metrics = Metrics(opt.net_type, opt.set_type, opt.output_decoding, train_set, opt.device, opt.num_steps, oneclass)
-early_stopping = EarlyStopping(patience=100, verbose=True)
+early_stopping = EarlyStopping(patience=20, verbose=True)
 
 # Select model
 if opt.train_method == "oneclass":
@@ -229,6 +187,34 @@ def sweep_train(config=None):
       elif config.surrogate_gradient == "fast_sigmoid":
         spike_grad = surrogate.fast_sigmoid()
 
+      subset_indeces = [0,1]
+      def get_subset(set, subset_indeces):
+        subset = copy.deepcopy(set)
+        for i in range(len(set)):
+          subset.db[i][0] = []
+          item = torch.transpose(set.db[i][0], 1, 0)
+
+          subset_item = []
+          for j in subset_indeces:
+            for x in range(receptive_encoder.population_size):
+              subset_item.append(item[j+x])
+
+          subset_item = torch.transpose(torch.stack(subset_item), 1, 0)
+          subset.db[i][0] = subset_item
+
+        return subset
+
+      subset_train_set = get_subset(train_set, subset_indeces)
+      subset_test_set = get_subset(test_set, subset_indeces)
+      subset_val_set = get_subset(val_set, subset_indeces)
+
+      subset_train_loader = DataLoader(subset_train_set, batch_size=opt.batch_size, shuffle=True)
+      subset_test_loader = DataLoader(subset_test_set, batch_size=opt.batch_size, shuffle=True)
+      subset_val_loader = DataLoader(subset_val_set, batch_size=opt.batch_size, shuffle=True)
+
+      data, _ = next(iter(subset_train_loader))
+      input_size = np.shape(data)[2]
+      print(input_size)
       # replace previously defined network with the one initialized by wandb sweep
       network = SNN(input_size=input_size, hidden_size=hidden_size, dropout=config.dropout, neuron_type=config.NeuronType, learn_alpha=config.learn_alpha, learn_beta=config.learn_beta, learn_threshold=config.learn_threshold, spike_grad=spike_grad).to(opt.device)
 
@@ -238,8 +224,8 @@ def sweep_train(config=None):
           optimizer = torch.optim.AdamW(network.parameters(), lr=config.learning_rate)
 
       for epoch in range(opt.num_epochs):
-          network, _, _ = train_epoch(network, train_loader, optimizer, epoch, logging_index=0)
-          _, _, avg_loss, avg_acc = forward_pass_eval(network, val_loader, logging_index=0)
+          network, _, _ = train_epoch(network, subset_train_loader, optimizer, epoch, logging_index=0)
+          _, _, avg_loss, avg_acc = forward_pass_eval(network, subset_val_loader, logging_index=0)
           wandb.log({"loss": avg_loss, "epoch": epoch, "accuracy": avg_acc}) 
 
 def forward_pass_eval(model,dataloader, logging_index, testing=False):
@@ -251,8 +237,6 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
 
   y_true = []
   y_pred = []
-
-  label_names = ["No manipulation", "Manipulation"]
 
   if testing:
     print("loading best model...")
@@ -274,6 +258,7 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
 
   with torch.no_grad():
     for batch_idx, (data, target) in enumerate(dataloader):
+
       data=data.to(opt.device)
       target=target.to(opt.device)
 
@@ -350,6 +335,7 @@ if not opt.load_model and not opt.sweep:
   logging_index_forward_eval = 0
 
 if opt.sweep:
+  #sweep_handler = sweep.SweepHandler(opt)
   wandb.agent(sweep_id, sweep_train, count=100)
 else:
   forward_pass_eval(model, test_loader, logging_index_forward_eval, testing=True)

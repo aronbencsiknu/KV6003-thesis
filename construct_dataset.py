@@ -6,6 +6,7 @@ from torch.utils.data import Dataset
 from snntorch import spikegen
 import numpy as np
 from progress.bar import ShadyBar
+import plots
 
 
 class ManipulatedDataset:
@@ -13,7 +14,7 @@ class ManipulatedDataset:
 
         # manipulation characteristics
         self.m_len = manipulation_length
-        self.price_increase = 30 # bps
+        self.price_increase = 8 # bps
         self.volume_increase = 4 # folds
         self.epsilon = 0.055 # probability of manipulation
 
@@ -97,30 +98,27 @@ class ExtractFeatures:
         self.original_bid_volume = self.original_data[3]
         self.features = []
 
-        # P_t and V_t
-        self.features.append(self.original_bid_price)
-        #self.features.append(self.original_ask_price)
-        """self.features.append(self.original_bid_volume)
+        # original price and volume
+        """self.features.append(self.original_bid_price)
+        self.features.append(self.original_ask_price)
+        self.features.append(self.original_bid_volume)
         self.features.append(self.original_ask_volume)"""
 
-        # dPt/d_t and dV_t/d_t
-        """self.features.append(self.take_derivative(self.original_bid_price))
-        self.features.append(self.take_derivative(self.original_ask_price))
-
+        # gradients
+        self.features.append(self.take_derivative(self.original_bid_price))
+        """self.features.append(self.take_derivative(self.original_ask_price))
         self.features.append(self.take_derivative(self.original_bid_volume))
         self.features.append(self.take_derivative(self.original_ask_volume))"""
 
-        # dPhat_t/d_t and dVhat_t/d_t
-        """self.features.append(self.take_derivative(self.extract_high_frequencies(self.original_bid_price)))
+        """# high frequency gradients
+        self.features.append(self.take_derivative(self.extract_high_frequencies(self.original_bid_price)))
         self.features.append(self.take_derivative(self.extract_high_frequencies(self.original_ask_price)))
-
         self.features.append(self.take_derivative(self.extract_high_frequencies(self.original_bid_volume)))
         self.features.append(self.take_derivative(self.extract_high_frequencies(self.original_ask_volume)))
 
-        # Phat and Vhat
+        # high frequencies
         self.features.append(self.extract_high_frequencies(self.original_bid_price))
         self.features.append(self.extract_high_frequencies(self.original_ask_price))
-
         self.features.append(self.extract_high_frequencies(self.original_bid_volume))
         self.features.append(self.extract_high_frequencies(self.original_ask_volume))"""
 
@@ -222,11 +220,11 @@ class LabelledWindows:
     
     
 class CustomDataset(Dataset):
-    def __init__(self, data, targets, num_steps, window_length, encoding="rate", flatten=True, set_type="spiking", pop_encoder=None):
+    def __init__(self, data, targets, num_steps, window_length, encoding="rate", flatten=True, set_type="spiking", pop_encoder=None, num_classes=2):
         self.data=data.copy()
         self.targets=targets.copy()
         self.db=[]
-        self.n_classes = 2
+        self.n_classes = num_classes
         self.encoding=encoding
         self.flatten = flatten
         self.set_type = set_type
@@ -236,8 +234,9 @@ class CustomDataset(Dataset):
             self.receptive_encoder = pop_encoder
 
         # encode data to spikes using the defined encoding method
-        print("\n")
+        print()
         bar = ShadyBar("Encoding set", max=np.shape(self.data)[0])
+
         for i in range(np.shape(self.data)[0]):
             bar.next()
             if self.set_type == "spiking":
@@ -258,7 +257,7 @@ class CustomDataset(Dataset):
                     item = spikegen.latency(item,num_steps=num_steps,normalize=True, linear=True)
                 
                 elif self.encoding=="population":
-                    #print("shape of item before encoding: ", np.shape(item))
+
                     item = self.receptive_encoder.encode_window(item, self.window_length)
                     item = torch.Tensor(item)
                     
@@ -303,6 +302,7 @@ class CustomDataset(Dataset):
 def prepare_data(data, inject, window_length, window_overlap, manipulation_length):
     if inject:
         manipulated_data = ManipulatedDataset(data, manipulation_length)
+        plots.plot_manipulated_data(manipulated_data)
         data = manipulated_data.data
 
         manipulation_indeces = manipulated_data.manipulation_indeces

@@ -83,11 +83,13 @@ class CUBAPopulation():
     def tune_receptive_fields(self, count, intercept_low, intercept_high, tau, dt, T, Vth):
         gain = []
         tau_list = np.linspace(0.1, 0.9, num=count)
-        intercepts = np.linspace(intercept_low+0.001, intercept_high, num=count)
-        #intercepts = np.logspace(np.log10(intercept_low+0.001), np.log10(intercept_high), num=count)
+
+        if intercept_high > 0.1:
+            intercepts = np.linspace(intercept_low + 1e-3, intercept_high, num=count)
+        else:
+            intercepts = np.logspace(np.log10(intercept_low + 1e-3), np.log10(0.2), num=count)
         
-        #print("Tuning neuronal fields...")
-        print("\n")
+        print()
         bar = ShadyBar("Tuning neurons", max=count)
         for i in range(count):
             bar.next()
@@ -102,7 +104,7 @@ class CUBAPopulation():
 
             last_voltage = Vth + 2
             counter = 0
-            while last_voltage >= Vth+0.00001:
+            while last_voltage >= Vth + 1e-5:
                 counter += 1
                 g_min = g_min - ((last_voltage - Vth)/32) * multiplier
                 test_neuron = CUBANeuron(tau_list[i], g_min, Vth, dt, T)
@@ -148,7 +150,7 @@ class CUBAPopulation():
 
 
 class CUBALayer():
-    def __init__(self, feature_dimensionality, population_size, means, plot_tuning_curves=True, tau=0.8, g=-5.0, Vth=1, dt=0.01, T=0.5):
+    def __init__(self, feature_dimensionality, population_size, means, tau=0.8, g=-5.0, Vth=1, dt=0.01, T=0.1):
 
         self.feature_dimensionality = feature_dimensionality # number of populations
         self.population_size = population_size # number of neurons in each population

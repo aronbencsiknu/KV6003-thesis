@@ -29,7 +29,8 @@ class Options(object):
         self.argparser.add_argument("--window_overlap", type=float, default=0, help="Overlap of windows in the dataset")
         self.argparser.add_argument("--train_method", type=str, default="multiclass", choices=["multiclass", "oneclass"], help="Method to use for training (multiclass, oneclass)")
         self.argparser.add_argument("--manipulation_length", type=int, default=2, help="Length of the injected manipulations")
-        
+        self.argparser.add_argument("--subset_indeces", nargs='+',default=None, help='Hidden layer size')
+
         self.initialized = True
 
     def parse(self):
@@ -38,6 +39,8 @@ class Options(object):
         self.opt = self.argparser.parse_args()
 
         self.opt.hidden_size = [int(i) for i in self.opt.hidden_size]
+        if self.opt.subset_indeces is not None:
+            self.opt.subset_indeces = [int(i) for i in self.opt.subset_indeces]
 
         self.opt.wandb_key = "edfb94e4b9dca47c397a343d2829e9af262d9e32"
 
