@@ -32,6 +32,7 @@ class Metrics():
         elif self.output_decoding=="latency":
             self.loss_fn = functional.loss.mse_temporal_loss(target_is_time=False, on_target=0, off_target=num_steps, tolerance=5, multi_spike=False)
 
+    # calculate loss based on the network type and output decoding
     def loss(self, output, y_true):
         if self.spiking:
             y_pred = output[0][-1]
@@ -45,6 +46,7 @@ class Metrics():
             loss = self.loss_fn(y_pred, y_true)  
         return loss
 
+    # return the predicted class from spike trains
     def return_predicted(self, output):
         if not self.spiking:
             ps = torch.exp(output)
@@ -56,6 +58,7 @@ class Metrics():
 
             return predicted
         
+    # forward pass based on the network type
     def forward_pass(self, net, x, num_steps, gaussian=False):
         if self.net_type=="OC_SCNN":
             if gaussian:
@@ -69,6 +72,7 @@ class Metrics():
         elif self.net_type=="CNN":
             return net(x)
     
+    # calculate the confusion matrix
     def perf_measure(self, y_actual, y_hat):
 
         for i in range(len(y_hat)): 
@@ -81,12 +85,19 @@ class Metrics():
             if y_hat[i]==0 and y_actual[i]!=y_hat[i]:
                 self.FN += 1
         
+    # calculate the precision
     def precision(self):
         return self.TP/(self.TP+self.FP+1e-8)
 
+    # calculate the recall
     def recall(self):
         return self.TP/(self.TP+self.FN+1e-8)
     
+    # calculate the harmonic mean of precision and recall
+    def f1_score(self):
+        return 2*(self.precision()*self.recall())/(self.precision()+self.recall()+1e-8)
+
+    # calculate the accuracy
     def accuracy(self, output, y_true):
         if not self.spiking:
             ps = torch.exp(output)

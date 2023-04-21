@@ -82,20 +82,29 @@ plot confusion matrix
 #####################
 """
 def plot_confusion_matrix(y_pred, y_true):
-    cm_prec = confusion_matrix(y_true, y_pred, labels=[0,1], normalize="pred")
-    cm_sens = confusion_matrix(y_true, y_pred, labels=[0,1], normalize="true")
 
-    print("Precision:", cm_prec)
-    print("Sensitivity:", cm_sens)
-    conf_matrix = cm_sens*cm_prec*2/(cm_sens+cm_prec+1e-8)
+    conf_matrix = confusion_matrix(y_true, y_pred, labels=[0,1])
+    
+    normalized_conf_matrix = conf_matrix.astype('float') / conf_matrix.sum(axis=1)[:, np.newaxis]
+    normalized_conf_matrix = np.round(normalized_conf_matrix, decimals=2)
+    
 
-    fig, ax = plt.subplots(figsize=(7.5, 7.5))
-    ax.matshow(conf_matrix, alpha=0.5, cmap=plt.cm.Blues)
+    fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(15, 7.5))
+
+    ax[0].matshow(conf_matrix, alpha=0.5, cmap=plt.cm.Blues)
+    ax[1].matshow(normalized_conf_matrix, alpha=0.5, cmap=plt.cm.Blues)
+
     for i in range(conf_matrix.shape[0]):
         for j in range(conf_matrix.shape[1]):
-            ax.text(x=j, y=i,s=conf_matrix[i, j], va='center', ha='center', size='xx-large')
+            ax[0].text(x=j, y=i,s=conf_matrix[i, j], va='center', ha='center', size='xx-large')
+            ax[1].text(x=j, y=i,s=normalized_conf_matrix[i, j], va='center', ha='center', size='xx-large')
     
-    plt.xlabel('Predictions', fontsize=18)
-    plt.ylabel('Targets', fontsize=15)
-    plt.title('Confusion Matrix', fontsize=15)
+    ax[0].set_xlabel('Predictions', fontsize=18)
+    ax[0].set_ylabel('Targets', fontsize=15)
+    ax[0].set_title('Confusion Matrix', fontsize=15)
+
+    ax[1].set_xlabel('Predictions', fontsize=18)
+    ax[1].set_ylabel('Targets', fontsize=15)
+    ax[1].set_title('Normalized Confusion Matrix', fontsize=15)
+
     plt.show()

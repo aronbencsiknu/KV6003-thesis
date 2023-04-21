@@ -84,7 +84,6 @@ train_set = CustomDataset(data=X_train, targets=y_train, num_steps=opt.num_steps
 test_set = CustomDataset(data=X_test, targets=y_test, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type, pop_encoder=receptive_encoder)
 val_set = CustomDataset(data=X_val, targets=y_val, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type, pop_encoder=receptive_encoder)
 
-print("Train set size:\t\t", np.shape(train_set[0][0]))
 print("\n----------------------------------\n")
 print("Class counts: ")
 print("\t- 0:", train_set.n_samples_per_class[0])
@@ -304,12 +303,13 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
     print("Test loss:\t%.3f" % loss)
     print("Test acc:\t%.2f" % acc+"%\n")
     print("Precision:\t%.3f" % metrics.precision())
-    print("Recall:\t%.2f"% metrics.recall() +"\n")
+    print("Recall:\t%.3f"% metrics.recall())
+    print("F1-Score:\t%.3f"% metrics.f1_score() +"\n")
 
     plots.plot_confusion_matrix(y_pred, y_true)
   else:
     print("Val loss:\t%.3f" % loss)
-    print("Val acc:\t%.2f"% acc+"%\n")
+    print("Val acc:\t%.3f"% acc+"%\n")
 
     early_stopping(loss, model)
 

@@ -14,7 +14,7 @@ class ManipulatedDataset:
 
         # manipulation characteristics
         self.m_len = manipulation_length
-        self.price_increase = 8 # bps
+        self.price_increase = 30 # bps
         self.volume_increase = 4 # folds
         self.epsilon = 0.055 # probability of manipulation
 
@@ -106,9 +106,9 @@ class ExtractFeatures:
 
         # gradients
         self.features.append(self.take_derivative(self.original_bid_price))
-        """self.features.append(self.take_derivative(self.original_ask_price))
-        self.features.append(self.take_derivative(self.original_bid_volume))
-        self.features.append(self.take_derivative(self.original_ask_volume))"""
+        #self.features.append(self.take_derivative(self.original_ask_price))
+        #self.features.append(self.take_derivative(self.original_bid_volume))
+        """self.features.append(self.take_derivative(self.original_ask_volume))"""
 
         """# high frequency gradients
         self.features.append(self.take_derivative(self.extract_high_frequencies(self.original_bid_price)))
@@ -299,10 +299,11 @@ class CustomDataset(Dataset):
         return torch.tensor(w, dtype=torch.float32)
 
 
-def prepare_data(data, inject, window_length, window_overlap, manipulation_length):
+def prepare_data(data, inject, window_length, window_overlap, manipulation_length, plot_manipulated_data=False):
     if inject:
         manipulated_data = ManipulatedDataset(data, manipulation_length)
-        plots.plot_manipulated_data(manipulated_data)
+        if plot_manipulated_data:
+            plots.plot_manipulated_data(manipulated_data)
         data = manipulated_data.data
 
         manipulation_indeces = manipulated_data.manipulation_indeces

@@ -15,7 +15,7 @@ Feedforward SNN with leaky or synaptic neurons
 
 class SNN(nn.Module):
     
-    def __init__(self, input_size, hidden_size, output_size=2, beta=0.5, alpha=0.5, dropout=0.4, spike_grad=surrogate.fast_sigmoid(slope=25), neuron_type="Synaptic", learn_beta=False, learn_alpha=False, learn_threshold=True):
+    def __init__(self, input_size, hidden_size, output_size=2, beta=0.5, alpha=0.5, dropout=0.1, spike_grad=surrogate.atan(), neuron_type="Leaky", learn_beta=True, learn_alpha=False, learn_threshold=False):
         super().__init__()
 
         self.neuron_type = neuron_type
