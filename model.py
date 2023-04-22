@@ -15,7 +15,7 @@ Feedforward SNN with leaky or synaptic neurons
 
 class SNN(nn.Module):
     
-    def __init__(self, input_size, hidden_size, output_size=2, beta=0.5, alpha=0.5, dropout=0.1, spike_grad=surrogate.atan(), neuron_type="Leaky", learn_beta=True, learn_alpha=False, learn_threshold=False):
+    def __init__(self, input_size, hidden_size, output_size=2, beta=0.5, alpha=0.5, dropout=0.5, spike_grad=surrogate.atan(), neuron_type="Leaky", learn_beta=False, learn_alpha=False, learn_threshold=True):
         super().__init__()
 
         self.neuron_type = neuron_type
@@ -182,48 +182,9 @@ class CSNN(nn.Module):
         return [spk_recs, mem_recs]
 
 """
-###############################
-Conventional CNN for comparison
-###############################
-"""
-class CNN(nn.Module):
-    def __init__(self, input_size):
-        super(CNN, self).__init__()
-        self.conv1 = nn.Conv1d(in_channels=input_size, out_channels=16, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, padding=1)
-        self.maxpool = nn.MaxPool1d(3, stride=2)
-        self.adaptive_pool = nn.AdaptiveAvgPool1d(8)
-        self.conv3 = nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3, padding=1)
-        self.fc1 = nn.Linear(512, 256)
-        self.fc2 = nn.Linear(256, 2)
-        self.lsm = nn.LogSoftmax(dim=1)
-        self.dropout = nn.Dropout(p=0.3)
-        
-    def forward(self, x):
-        
-        x = torch.relu(self.conv1(x))
-        x = self.maxpool(x)
-
-        x = torch.relu(self.conv2(x))
-        x = self.maxpool(x)
-
-        x = torch.relu(self.conv3(x))
-        x = self.adaptive_pool(x)
-
-        x = torch.flatten(x, start_dim=1)
-
-        x = torch.relu(self.fc1(x))
-        x = self.dropout(x)
-        x = self.fc2(x)
-        x = self.lsm(x)
-
-        return x
-    
-
-"""
-###############################
-GAUSSIAN TEST
-###############################
+######################
+One-Class SCNN attempt
+######################
 """
 class FeatureExtractorBody(nn.Module):
     def __init__(self, batch_size, input_size, hidden_size=[32,64], beta=0.5, spike_grad=surrogate.fast_sigmoid(slope=25), neuron_type="Leaky"):
@@ -405,3 +366,63 @@ class OC_SCNN(nn.Module):
         gaussian_features = torch.permute(gaussian_features, (0,2,1))
 
         return gaussian_features
+    
+
+"""
+###############################
+Conventional CNN for comparison
+###############################
+"""
+class CNN(nn.Module):
+    def __init__(self, input_size):
+        super(CNN, self).__init__()
+        self.conv1 = nn.Conv1d(in_channels=input_size, out_channels=16, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, padding=1)
+        self.maxpool = nn.MaxPool1d(3, stride=2)
+        self.adaptive_pool = nn.AdaptiveAvgPool1d(8)
+        self.conv3 = nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3, padding=1)
+        self.fc1 = nn.Linear(512, 256)
+        self.fc2 = nn.Linear(256, 2)
+        self.lsm = nn.LogSoftmax(dim=1)
+        self.dropout = nn.Dropout(p=0.3)
+        
+    def forward(self, x):
+        
+        x = torch.relu(self.conv1(x))
+        x = self.maxpool(x)
+
+        x = torch.relu(self.conv2(x))
+        x = self.maxpool(x)
+
+        x = torch.relu(self.conv3(x))
+        x = self.adaptive_pool(x)
+
+        x = torch.flatten(x, start_dim=1)
+
+        x = torch.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = self.fc2(x)
+        x = self.lsm(x)
+
+        return x
+    
+"""
+####################################
+RNN with LSTM modules for comparison
+####################################
+"""
+class RNN(nn.Module):
+    def __init__(self, input_size):
+        super().__init__()
+        self.lstm = nn.LSTM(input_size=input_size, hidden_size=128, num_layers=2, batch_first=True)
+        self.linear = nn.Linear(128, 2)
+        self.lsm = nn.LogSoftmax(dim=1)
+
+    def forward(self, x):
+        x = x.permute(0,2,1)
+        x, _ = self.lstm(x)
+        x = x.permute(1,0,2)[-1]
+        x = self.linear(x)
+        x = self.lsm(x)
+        
+        return x

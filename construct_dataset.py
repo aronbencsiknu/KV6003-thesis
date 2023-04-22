@@ -99,18 +99,18 @@ class ExtractFeatures:
         self.features = []
 
         # original price and volume
-        """self.features.append(self.original_bid_price)
+        self.features.append(self.original_bid_price)
         self.features.append(self.original_ask_price)
         self.features.append(self.original_bid_volume)
-        self.features.append(self.original_ask_volume)"""
+        self.features.append(self.original_ask_volume)
 
         # gradients
         self.features.append(self.take_derivative(self.original_bid_price))
-        #self.features.append(self.take_derivative(self.original_ask_price))
-        #self.features.append(self.take_derivative(self.original_bid_volume))
-        """self.features.append(self.take_derivative(self.original_ask_volume))"""
+        self.features.append(self.take_derivative(self.original_ask_price))
+        self.features.append(self.take_derivative(self.original_bid_volume))
+        self.features.append(self.take_derivative(self.original_ask_volume))
 
-        """# high frequency gradients
+        # high frequency gradients
         self.features.append(self.take_derivative(self.extract_high_frequencies(self.original_bid_price)))
         self.features.append(self.take_derivative(self.extract_high_frequencies(self.original_ask_price)))
         self.features.append(self.take_derivative(self.extract_high_frequencies(self.original_bid_volume)))
@@ -120,7 +120,7 @@ class ExtractFeatures:
         self.features.append(self.extract_high_frequencies(self.original_bid_price))
         self.features.append(self.extract_high_frequencies(self.original_ask_price))
         self.features.append(self.extract_high_frequencies(self.original_bid_volume))
-        self.features.append(self.extract_high_frequencies(self.original_ask_volume))"""
+        self.features.append(self.extract_high_frequencies(self.original_ask_volume))
 
         # clip the features to the same length
         min = len(self.features[0])

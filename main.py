@@ -3,7 +3,7 @@ from data import LobsterData
 import construct_dataset
 from construct_dataset import CustomDataset
 from receptive_encoder import CUBALayer
-from model import SNN, CSNN, CNN, OC_SCNN
+from model import SNN, CSNN, CNN, OC_SCNN, RNN
 from options import Options
 import plots
 from metrics import Metrics
@@ -36,7 +36,7 @@ if opt.wandb_logging:
   wandb.login(key=key)
   wandb.init(project=opt.wandb_project, 
               entity=opt.wandb_entity, 
-              group=opt.wandb_group,
+              group=opt.run_name,
               settings=wandb.Settings(start_method="thread"),
               config=opt)
   
@@ -48,15 +48,23 @@ if opt.sweep:
   sweep_config = {'method': 'random'}
   sweep_config['metric'] = sweep_handler.metric
   sweep_config['parameters'] = sweep_handler.parameters_dict
-  sweep_id = wandb.sweep(sweep_config, project="test")
+  sweep_id = wandb.sweep(sweep_config, project="thesis_sweeps")
 
 if opt.train_method == "multiclass":
   oneclass = False
-  unmanipulated_data = LobsterData(path=opt.path)
+  train_data = LobsterData(path="Amazon")
+  test_data = LobsterData(path="Apple")
+
+  X_train, y_train, means = construct_dataset.prepare_data(train_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length)
+  X_test, y_test, _ = construct_dataset.prepare_data(test_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length)
+
+  X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1, random_state=42)
+
+  """unmanipulated_data = LobsterData(path=opt.path)
 
   X, y, means = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length)
   X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-  X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1, random_state=42)
+  X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1, random_state=42)"""
 
 else:
   oneclass = True
@@ -129,7 +137,8 @@ elif opt.net_type=="SNN":
 
 elif opt.net_type=="CNN":
   model = CNN(input_size=feature_dimensionality).to(opt.device)
-
+elif opt.net_type=="RNN":
+  model = RNN(input_size=feature_dimensionality).to(opt.device)
 optimizer = torch.optim.AdamW(model.parameters(), lr=opt.learning_rate, betas=(0.9, 0.999))
 
 def train_epoch(net, train_loader,optimizer,epoch, logging_index):
@@ -162,7 +171,7 @@ def train_epoch(net, train_loader,optimizer,epoch, logging_index):
       logging_index+=1
 
   loss_val /= len(train_loader)
-  print("Train loss:\t%.3f" % loss_val)
+  print("Train loss:\t%.6f" % loss_val)
  
   return net, logging_index, loss_val
 
@@ -187,6 +196,7 @@ def sweep_train(config=None):
         spike_grad = surrogate.fast_sigmoid()
 
       subset_indeces = [0,1]
+      subset = False
       def get_subset(set, subset_indeces):
         subset = copy.deepcopy(set)
         for i in range(len(set)):
@@ -203,13 +213,18 @@ def sweep_train(config=None):
 
         return subset
 
-      subset_train_set = get_subset(train_set, subset_indeces)
-      subset_test_set = get_subset(test_set, subset_indeces)
-      subset_val_set = get_subset(val_set, subset_indeces)
+      sweep_train_set = copy.deepcopy(train_set)
+      sweep_test_set = copy.deepcopy(test_set)
+      sweep_val_set = copy.deepcopy(val_set)
 
-      subset_train_loader = DataLoader(subset_train_set, batch_size=opt.batch_size, shuffle=True)
-      subset_test_loader = DataLoader(subset_test_set, batch_size=opt.batch_size, shuffle=True)
-      subset_val_loader = DataLoader(subset_val_set, batch_size=opt.batch_size, shuffle=True)
+      if subset:
+        sweep_train_set = get_subset(sweep_train_set, subset_indeces)
+        sweep_test_set = get_subset(sweep_test_set, subset_indeces)
+        sweep_val_set = get_subset(sweep_val_set, subset_indeces)
+
+      subset_train_loader = DataLoader(sweep_train_set, batch_size=opt.batch_size, shuffle=True)
+      subset_test_loader = DataLoader(sweep_test_set, batch_size=opt.batch_size, shuffle=True)
+      subset_val_loader = DataLoader(sweep_val_set, batch_size=opt.batch_size, shuffle=True)
 
       data, _ = next(iter(subset_train_loader))
       input_size = np.shape(data)[2]
@@ -247,7 +262,7 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
       model.load_state_dict(torch.load('checkpoint.pt')) # load best model
 
       if opt.save_model:
-        model_name = opt.net_type + "_" + opt.input_encoding + "_" + opt.output_decoding + "_" + opt.neuron_type + "_" + opt.set_type + "_" + opt.train_method + ".pt"
+        model_name = opt.run_name + ".pt"
         path = pathlib.Path(pathlib.Path.cwd() / "trained_models") / model_name
         torch.save(model.state_dict(), path)
       
@@ -306,7 +321,18 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
     print("Recall:\t%.3f"% metrics.recall())
     print("F1-Score:\t%.3f"% metrics.f1_score() +"\n")
 
-    plots.plot_confusion_matrix(y_pred, y_true)
+    with open('results/'+opt.run_name+'.txt', 'w') as file:
+
+      # Write the values to the text file
+      file.write("\nTest loss: "+str(loss))
+      file.write("\nTest acc: "+str(acc))
+      file.write("\nPrecision: "+str(metrics.precision()))
+      file.write("\nRecall: "+str(metrics.recall()))
+      file.write("\nF1-Score: "+str(metrics.f1_score()))
+
+      file.close()
+
+    plots.plot_confusion_matrix(y_pred, y_true, opt.run_name)
   else:
     print("Val loss:\t%.3f" % loss)
     print("Val acc:\t%.3f"% acc+"%\n")
@@ -336,11 +362,12 @@ if not opt.load_model and not opt.sweep:
 
 if opt.sweep:
   #sweep_handler = sweep.SweepHandler(opt)
-  wandb.agent(sweep_id, sweep_train, count=100)
+  wandb.agent(sweep_id, sweep_train, count=50)
 else:
   forward_pass_eval(model, test_loader, logging_index_forward_eval, testing=True)
 
 if opt.wandb_logging:
   wandb.finish()
 
-plots.plot_spike_trains(model, test_loader, opt.num_steps, opt.device)
+if opt.set_type=="spiking":
+  plots.plot_spike_trains(model, test_loader, opt.num_steps, opt.device, opt.run_name)

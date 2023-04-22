@@ -24,6 +24,7 @@ class Metrics():
             class_weights = train_set.get_class_weights().to(device)
 
         if self.set_type=="non-spiking":
+            print("Non-spiking network")
             self.loss_fn = torch.nn.NLLLoss(class_weights)
 
         elif self.output_decoding=="rate":
@@ -42,7 +43,11 @@ class Metrics():
             else:
                 loss = self.loss_fn(y_pred, y_true)
         else:
+            #print("Non-spiking network")
             y_pred = output
+            #print(y_true)
+            #print("#############################################")
+            #print(y_pred)
             loss = self.loss_fn(y_pred, y_true)  
         return loss
 
@@ -51,6 +56,7 @@ class Metrics():
         if not self.spiking:
             ps = torch.exp(output)
             top_class = torch.argmax(ps, dim=1)
+            #print(top_class)
             return top_class
         else:
             y_pred = output[0][-1]
@@ -65,11 +71,9 @@ class Metrics():
                 return net(x, num_steps, gaussian=True)
             
             return net(x, num_steps)
-        elif self.net_type=="CSNN":
+        elif self.net_type=="CSNN" or self.net_type=="SNN":
             return net(x, num_steps)
-        elif self.net_type=="SNN":
-            return net(x, num_steps)
-        elif self.net_type=="CNN":
+        elif self.net_type=="CNN" or self.net_type=="RNN":
             return net(x)
     
     # calculate the confusion matrix
