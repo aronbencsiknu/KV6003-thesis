@@ -13,7 +13,7 @@ class Options(object):
         self.argparser.add_argument("--output_decoding", type=str, default="rate", choices=["rate", "latency"], help="input encoding (rate, latency)")
         self.argparser.add_argument("--input_encoding", type=str, default="rate", choices=["rate", "latency", "population"], help="output decoding (rate, latency, population)")
         self.argparser.add_argument("-wb", "--wandb_logging", action='store_true', help="enable logging to Weights&Biases")
-        self.argparser.add_argument("--wandb_project", type=str, default="thesis_results", help="Weights&Biases project name")
+        self.argparser.add_argument("--wandb_project", type=str, default="thesis_results_final", help="Weights&Biases project name")
         self.argparser.add_argument("--wandb_entity", type=str, default="aronbencsik", help="Weights&Biases entity name")
         self.argparser.add_argument("--net_type", type=str, default="SNN",choices=["SNN", "CSNN", "CNN", "OC_SCNN", "RNN"], help="Type of network to use (SNN, CSNN, CNN, OC_SCNN, RNN)")
         self.argparser.add_argument("-s", "--save_model", action='store_true', help="Save the model when finished training")
@@ -26,10 +26,10 @@ class Options(object):
         self.argparser.add_argument("--hidden_size", nargs='+',default=[128, 128], help='Hidden layer size')
         self.argparser.add_argument("--neuron_type", type=str, default="Leaky", choices=["Leaky","Synaptic"], help="Type of neuron to use (Leaky, Synaptic)")
         self.argparser.add_argument("--window_length", type=int, default=10, help="Length of the window to use for the dataset")
-        self.argparser.add_argument("--window_overlap", type=float, default=0, help="Overlap of windows in the dataset")
+        self.argparser.add_argument("--window_overlap", type=float, default=0.0, help="Overlap of windows in the dataset")
         self.argparser.add_argument("--train_method", type=str, default="multiclass", choices=["multiclass", "oneclass"], help="Method to use for training (multiclass, oneclass)")
-        self.argparser.add_argument("--manipulation_length", type=int, default=2, help="Length of the injected manipulations")
-        self.argparser.add_argument("--subset_indeces", nargs='+',default=None, help='Hidden layer size')
+        self.argparser.add_argument("--manipulation_length", type=int, default=3, help="Length of the injected manipulations")
+        self.argparser.add_argument("--subset_indeces", nargs='+',default=[4,5,6,7], help='Hidden layer size')
 
         self.initialized = True
 
@@ -39,8 +39,7 @@ class Options(object):
         self.opt = self.argparser.parse_args()
 
         self.opt.hidden_size = [int(i) for i in self.opt.hidden_size]
-        if self.opt.subset_indeces is not None:
-            self.opt.subset_indeces = [int(i) for i in self.opt.subset_indeces]
+        self.opt.subset_indeces = [int(i) for i in self.opt.subset_indeces]
 
         self.opt.wandb_key = "edfb94e4b9dca47c397a343d2829e9af262d9e32"
 
@@ -62,8 +61,8 @@ class Options(object):
             self.opt.flatten_data = False
             self.opt.set_type = "non-spiking"
 
-        self.opt.run_name = self.opt.net_type + "_" + self.opt.input_encoding + "-to-" + self.opt.output_decoding + "_" + self.opt.neuron_type + "_price-and-volume"
-        #self.opt.wandb_group = self.opt.net_type + "_" + self.opt.input_encoding + "_" + self.opt.output_decoding + "_" + self.opt.neuron_type
+        self.opt.run_name = self.opt.net_type + "_" + self.opt.input_encoding + "-to-" + self.opt.output_decoding + "_" + self.opt.neuron_type + "_price30-volume4"
         self.opt.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
+        self.opt.load_name = "100.0_SNN_rate-to-rate_Leaky_price30-volume4"
         return self.opt

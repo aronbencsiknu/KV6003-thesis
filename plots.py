@@ -89,7 +89,7 @@ def plot_confusion_matrix(y_pred, y_true, save_name):
     conf_matrix = confusion_matrix(y_true, y_pred, labels=[0,1])
     
     normalized_conf_matrix = conf_matrix.astype('float') / conf_matrix.sum(axis=1)[:, np.newaxis]
-    normalized_conf_matrix = np.round(normalized_conf_matrix, decimals=2)
+    normalized_conf_matrix = np.round(normalized_conf_matrix, decimals=4)
 
     fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(15, 7.5))
     #cmap = plt.get_cmap('jet', N)
@@ -102,7 +102,7 @@ def plot_confusion_matrix(y_pred, y_true, save_name):
     for i in range(conf_matrix.shape[0]):
         for j in range(conf_matrix.shape[1]):
             ax[0].text(x=j, y=i,s=conf_matrix[i, j], va='center', ha='center', size='xx-large', color= 'black' if conf_matrix[i, j] > conf_matrix.max() / 2. else 'white')
-            ax[1].text(x=j, y=i,s=normalized_conf_matrix[i, j], va='center', ha='center', size='xx-large', color= 'black' if conf_matrix[i, j] > conf_matrix.max() / 2. else 'white')
+            ax[1].text(x=j, y=i,s=normalized_conf_matrix[i, j], va='center', ha='center', size='xx-large', color= 'black' if normalized_conf_matrix[i, j] > normalized_conf_matrix.max() / 2. else 'white')
     
     ax[0].set_xlabel('Predictions', fontsize=18)
     ax[0].set_ylabel('Targets', fontsize=18)

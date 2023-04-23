@@ -85,7 +85,7 @@ class CUBAPopulation():
         tau_list = np.linspace(0.1, 0.9, num=count)
 
         if intercept_high > 0.1:
-            intercepts = np.linspace(intercept_low + 1e-3, intercept_high, num=count)
+            intercepts = np.linspace(intercept_low + 1e-2, intercept_high, num=count)
         else:
             intercepts = np.logspace(np.log10(intercept_low + 1e-3), np.log10(0.2), num=count)
         

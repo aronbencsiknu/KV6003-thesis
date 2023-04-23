@@ -7,20 +7,17 @@ class SweepHandler():
         }
 
         self.parameters_dict = {
-        'optimizer': {
-            'values': ['adam', 'adamW']
-            },
         'num_hidden': {
-            'values': [1, 2, 3, 4, 5]
+            'values': [1, 2, 3, 4]
             },
         'hidden_size': {
             'values': [32, 64, 128, 256, 512]
             },
         'dropout': {
-                'values': [0.1, 0.3, 0.4, 0.5]
+                'values': [0.3, 0.4, 0.5]
             },
         'learning_rate': {
-            'values': [0.1, 0.01, 0.001, 0.0001]
+            'values': [0.01, 0.001]
         },
 
         'NeuronType': {

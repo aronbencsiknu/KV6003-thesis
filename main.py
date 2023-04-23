@@ -20,6 +20,7 @@ import wandb
 import pathlib
 from snntorch import surrogate
 import copy
+import json
 
 opt = Options().parse()
 
@@ -48,23 +49,17 @@ if opt.sweep:
   sweep_config = {'method': 'random'}
   sweep_config['metric'] = sweep_handler.metric
   sweep_config['parameters'] = sweep_handler.parameters_dict
-  sweep_id = wandb.sweep(sweep_config, project="thesis_sweeps")
+  sweep_id = wandb.sweep(sweep_config, project="thesis_sweeps_final")
 
 if opt.train_method == "multiclass":
   oneclass = False
-  train_data = LobsterData(path="Amazon")
-  test_data = LobsterData(path="Apple")
+  train_data = LobsterData(path="Amazon", limit=20000)
+  test_data = LobsterData(path="Apple", limit=10000)
 
-  X_train, y_train, means = construct_dataset.prepare_data(train_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length)
-  X_test, y_test, _ = construct_dataset.prepare_data(test_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length)
+  X_train, y_train, means = construct_dataset.prepare_data(train_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length, opt.subset_indeces, 0.11)
+  X_test, y_test, _ = construct_dataset.prepare_data(test_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length, opt.subset_indeces, 0.11)
 
-  X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1, random_state=42)
-
-  """unmanipulated_data = LobsterData(path=opt.path)
-
-  X, y, means = construct_dataset.prepare_data(unmanipulated_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length)
-  X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-  X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.1, random_state=42)"""
+  X_test, X_val, y_test, y_val = train_test_split(X_test, y_test, test_size=0.1, random_state=42)
 
 else:
   oneclass = True
@@ -83,7 +78,7 @@ feature_dimensionality = np.shape(X_train)[2]
 if opt.input_encoding == "population":
   receptive_encoder = CUBALayer(feature_dimensionality=feature_dimensionality, population_size=10, means=means)
   opt.num_steps = int(receptive_encoder.T/receptive_encoder.dt) * opt.window_length # override num_steps
-  #receptive_encoder.display_tuning_curves() # plot tuning curves
+  receptive_encoder.display_tuning_curves() # plot tuning curves
 
 else:
   receptive_encoder = None
@@ -139,7 +134,8 @@ elif opt.net_type=="CNN":
   model = CNN(input_size=feature_dimensionality).to(opt.device)
 elif opt.net_type=="RNN":
   model = RNN(input_size=feature_dimensionality).to(opt.device)
-optimizer = torch.optim.AdamW(model.parameters(), lr=opt.learning_rate, betas=(0.9, 0.999))
+
+optimizer = torch.optim.Adam(model.parameters(), lr=opt.learning_rate)
 
 def train_epoch(net, train_loader,optimizer,epoch, logging_index):
 
@@ -186,6 +182,7 @@ def sweep_train(config=None):
 
       hidden_size = [config.hidden_size]*config.num_hidden
       
+      # initialize surrogate gradient
       if config.surrogate_gradient == "atan":
         spike_grad = surrogate.atan()
 
@@ -195,54 +192,39 @@ def sweep_train(config=None):
       elif config.surrogate_gradient == "fast_sigmoid":
         spike_grad = surrogate.fast_sigmoid()
 
-      subset_indeces = [0,1]
-      subset = False
-      def get_subset(set, subset_indeces):
-        subset = copy.deepcopy(set)
-        for i in range(len(set)):
-          subset.db[i][0] = []
-          item = torch.transpose(set.db[i][0], 1, 0)
-
-          subset_item = []
-          for j in subset_indeces:
-            for x in range(receptive_encoder.population_size):
-              subset_item.append(item[j+x])
-
-          subset_item = torch.transpose(torch.stack(subset_item), 1, 0)
-          subset.db[i][0] = subset_item
-
-        return subset
-
-      sweep_train_set = copy.deepcopy(train_set)
-      sweep_test_set = copy.deepcopy(test_set)
-      sweep_val_set = copy.deepcopy(val_set)
-
-      if subset:
-        sweep_train_set = get_subset(sweep_train_set, subset_indeces)
-        sweep_test_set = get_subset(sweep_test_set, subset_indeces)
-        sweep_val_set = get_subset(sweep_val_set, subset_indeces)
-
-      subset_train_loader = DataLoader(sweep_train_set, batch_size=opt.batch_size, shuffle=True)
-      subset_test_loader = DataLoader(sweep_test_set, batch_size=opt.batch_size, shuffle=True)
-      subset_val_loader = DataLoader(sweep_val_set, batch_size=opt.batch_size, shuffle=True)
-
-      data, _ = next(iter(subset_train_loader))
-      input_size = np.shape(data)[2]
-      print(input_size)
       # replace previously defined network with the one initialized by wandb sweep
       network = SNN(input_size=input_size, hidden_size=hidden_size, dropout=config.dropout, neuron_type=config.NeuronType, learn_alpha=config.learn_alpha, learn_beta=config.learn_beta, learn_threshold=config.learn_threshold, spike_grad=spike_grad).to(opt.device)
-
-      if config.optimizer == "adam":
-          optimizer = torch.optim.Adam(network.parameters(), lr=config.learning_rate)
-      elif config.optimizer == "adamW":
-          optimizer = torch.optim.AdamW(network.parameters(), lr=config.learning_rate)
+      
+      optimizer = torch.optim.AdamW(network.parameters(), lr=config.learning_rate)
+      sweep_early_stopping = EarlyStopping(patience=opt.num_epochs, verbose=True)
+      max_acc = 0
 
       for epoch in range(opt.num_epochs):
-          network, _, _ = train_epoch(network, subset_train_loader, optimizer, epoch, logging_index=0)
-          _, _, avg_loss, avg_acc = forward_pass_eval(network, subset_val_loader, logging_index=0)
+          network, _, _ = train_epoch(network, train_loader, optimizer, epoch, logging_index=0)
+          _, _, avg_loss, avg_acc = forward_pass_eval(network, val_loader, sweep_early_stopping, logging_index=0)
+          if avg_acc > max_acc:
+            max_acc = avg_acc
           wandb.log({"loss": avg_loss, "epoch": epoch, "accuracy": avg_acc}) 
 
-def forward_pass_eval(model,dataloader, logging_index, testing=False):
+
+      config_dict = config.__dict__
+      config_dict = config_dict["_items"]
+      print(config_dict)
+      dict_name = str(max_acc)+ "_" + opt.run_name + ".json"
+      path_p_dict = pathlib.Path(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / dict_name)
+     
+      with open(path_p_dict, 'w') as f:
+        json.dump(config_dict, f)
+      
+      
+      model_name = str(max_acc)+ "_" + opt.run_name + ".pt"
+      
+      path_model = pathlib.Path(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / model_name)
+      network.load_state_dict(torch.load('checkpoint.pt')) # load best model
+      torch.save(network.state_dict(), path_model)
+
+
+def forward_pass_eval(model,dataloader, early_stopping, logging_index, testing=False):
 
   model.eval()
   loss = 0
@@ -256,8 +238,19 @@ def forward_pass_eval(model,dataloader, logging_index, testing=False):
     print("loading best model...")
 
     if opt.load_model:
-      path = pathlib.Path(pathlib.Path.cwd() / "trained_models") / "example.pt"
-      model.load_state_dict(torch.load(path))
+      name_model = opt.load_name + ".pt"
+      name_dict = opt.load_name + ".json"
+      path_model = pathlib.Path(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / name_model)
+      path_p_dict = pathlib.Path(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / name_dict)
+
+      p_dict = open(path_p_dict)
+  
+      # returns JSON object as 
+      # a dictionary
+      p_dict = json.load(p_dict)
+
+      model = SNN(input_size=input_size, hidden_size=opt.hidden_size, output_size=2, h_params=p_dict).to(opt.device)
+      model.load_state_dict(torch.load(path_model))
     else:
       model.load_state_dict(torch.load('checkpoint.pt')) # load best model
 
@@ -353,7 +346,7 @@ if not opt.load_model and not opt.sweep:
   for epoch in range(1, opt.num_epochs+1):
 
     model, logging_index_train, _ = train_epoch(model,train_loader,optimizer,epoch, logging_index_train)
-    logging_index_forward_eval, stop_early, _, _ = forward_pass_eval(model, val_loader, logging_index_forward_eval)
+    logging_index_forward_eval, stop_early, _, _ = forward_pass_eval(model, val_loader, early_stopping, logging_index_forward_eval)
 
     if stop_early:
       break
@@ -361,10 +354,9 @@ if not opt.load_model and not opt.sweep:
   logging_index_forward_eval = 0
 
 if opt.sweep:
-  #sweep_handler = sweep.SweepHandler(opt)
   wandb.agent(sweep_id, sweep_train, count=50)
 else:
-  forward_pass_eval(model, test_loader, logging_index_forward_eval, testing=True)
+  forward_pass_eval(model, test_loader, early_stopping, logging_index_forward_eval, testing=True)
 
 if opt.wandb_logging:
   wandb.finish()

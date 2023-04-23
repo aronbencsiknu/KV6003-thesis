@@ -1,0 +1,6 @@
+
+Test loss: 12.233898989359538
+Test acc: 93.82728494623656
+Precision: 0.0
+Recall: 0.0
+F1-Score: 0.0

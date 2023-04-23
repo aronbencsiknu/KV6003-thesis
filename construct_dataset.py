@@ -10,13 +10,13 @@ import plots
 
 
 class ManipulatedDataset:
-    def __init__(self, original_data, manipulation_length):
+    def __init__(self, original_data, manipulation_length, epsilon = 0.055):
 
         # manipulation characteristics
         self.m_len = manipulation_length
         self.price_increase = 30 # bps
         self.volume_increase = 4 # folds
-        self.epsilon = 0.055 # probability of manipulation
+        self.epsilon = epsilon # probability of manipulation
 
         self.original_data = original_data
         self.data = copy.deepcopy(original_data)
@@ -299,9 +299,9 @@ class CustomDataset(Dataset):
         return torch.tensor(w, dtype=torch.float32)
 
 
-def prepare_data(data, inject, window_length, window_overlap, manipulation_length, plot_manipulated_data=False):
+def prepare_data(data, inject, window_length, window_overlap, manipulation_length, subset_indeces, injection_epsilon=0.055, plot_manipulated_data=False):
     if inject:
-        manipulated_data = ManipulatedDataset(data, manipulation_length)
+        manipulated_data = ManipulatedDataset(data, manipulation_length, injection_epsilon)
         if plot_manipulated_data:
             plots.plot_manipulated_data(manipulated_data)
         data = manipulated_data.data
@@ -311,7 +311,9 @@ def prepare_data(data, inject, window_length, window_overlap, manipulation_lengt
         manipulation_indeces = None
 
     extracted_features = ExtractFeatures(data)
-    input_features = extracted_features.features
+    input_features = []
+    for i in range(len(subset_indeces)):
+        input_features.append(extracted_features.features[subset_indeces[i]])
 
     means = []
     for i in range(len(input_features)):

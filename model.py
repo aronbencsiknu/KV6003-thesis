@@ -15,26 +15,51 @@ Feedforward SNN with leaky or synaptic neurons
 
 class SNN(nn.Module):
     
-    def __init__(self, input_size, hidden_size, output_size=2, beta=0.5, alpha=0.5, dropout=0.5, spike_grad=surrogate.atan(), neuron_type="Leaky", learn_beta=False, learn_alpha=False, learn_threshold=True):
+    def __init__(self, input_size, hidden_size, output_size=2, beta=0.5, alpha=0.5, dropout=0.5, spike_grad=surrogate.atan(), neuron_type="Leaky", learn_beta=False, learn_alpha=False, learn_threshold=True, h_params=None):
         super().__init__()
-
-        self.neuron_type = neuron_type
 
         self.synapses = nn.ModuleList() # list of synapses
         self.neurons = nn.ModuleList() # list of neurons
 
-        hidden_size.insert(0, input_size)
-        hidden_size.append(output_size)
+        if h_params is None:
+            self.neuron_type = neuron_type
+            self.hidden_size = hidden_size
+            
+            self.learn_beta = learn_beta
+            self.learn_alpha = learn_alpha
+            self.learn_threshold = learn_threshold
+            self.spike_grad = spike_grad
 
-        size = hidden_size
-        
-        for i in range(len(size) - 1):
-            self.synapses.append(nn.Linear(size[i], size[i + 1], bias=False))
+        else:
+            self.neuron_type = h_params["NeuronType"]
+            self.hidden_size = []
+
+            for i in range(h_params["num_hidden"]):
+                self.hidden_size.append(h_params["hidden_size"])
+
+            self.learn_beta = h_params["learn_beta"]
+            self.learn_alpha = h_params["learn_alpha"]
+            self.learn_threshold = h_params["learn_threshold"]
+            if h_params["surrogate_gradient"] == "atan":
+                self.spike_grad = surrogate.atan()
+
+            elif h_params["surrogate_gradient"] == "sigmoid":
+                self.spike_grad = surrogate.sigmoid()
+            
+            elif h_params["surrogate_gradient"] == "fast_sigmoid":
+                self.spike_grad = surrogate.fast_sigmoid()
+
+        self.hidden_size.insert(0, input_size)
+        self.hidden_size.append(output_size)
+        self.size = self.hidden_size
+
+        for i in range(len(self.size) - 1):
+            self.synapses.append(nn.Linear(self.size[i], self.size[i + 1], bias=False))
             if self.neuron_type == "Leaky":
-                self.neurons.append(snn.Leaky(beta=beta, spike_grad=spike_grad, learn_beta=learn_beta, learn_threshold=learn_threshold))
+                self.neurons.append(snn.Leaky(beta=beta, spike_grad=self.spike_grad, learn_beta=self.learn_beta, learn_threshold=self.learn_threshold))
 
             elif self.neuron_type == "Synaptic":
-                self.neurons.append(snn.Synaptic(alpha=alpha, beta=beta, threshold=0.2, spike_grad=spike_grad, learn_beta=learn_beta, learn_threshold=learn_threshold, learn_alpha=learn_alpha))
+                self.neurons.append(snn.Synaptic(alpha=alpha, beta=beta, threshold=0.1, spike_grad=self.spike_grad, learn_beta=self.learn_beta, learn_threshold=self.learn_threshold, learn_alpha=self.learn_alpha))
         
         self.dropout = nn.Dropout(p=dropout)
 
