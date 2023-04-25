@@ -63,27 +63,33 @@ class SNN(nn.Module):
         
         self.dropout = nn.Dropout(p=dropout)
 
-    def forward(self, x, num_steps, time_first=False):
+        self.membranes = [] # initial membrane potentials
+        self.syns = [] # initial synapse outputs
+        self.init_neurons()
+
+    def init_neurons(self):
+        for i in range(len(self.neurons)):
+            if self.neuron_type == "Leaky":
+                self.membranes.append(self.neurons[i].init_leaky()) # initialize membrane potentials
+            elif self.neuron_type == "Synaptic":
+                temp = self.neurons[i].init_synaptic()
+                self.syns.append(temp[0])
+                self.membranes.append(temp[1])
+
+    def forward(self, x, num_steps, time_first=False, real_time=False):
 
         if not time_first:
           x=x.transpose(1, 0) # convert to time first, batch second
 
-        membranes = [] # initial membrane potentials
-        syns = [] # initial synapse outputs
+        if not real_time:
+            self.membranes = [] # initial membrane potentials
+            self.syns = [] # initial synapse outputs
+            self.init_neurons()
 
         mem_recs = [[] for _ in range(len(self.neurons))] # list of membrane potentials over steps at output layer
         spk_recs = [[] for _ in range(len(self.neurons))] # list of spikes over steps at output layer
         syn_recs = [[] for _ in range(len(self.neurons))] # list of synapse outputs over steps at output layer
-        
-
-        for i in range(len(self.neurons)):
-            if self.neuron_type == "Leaky":
-                membranes.append(self.neurons[i].init_leaky()) # initialize membrane potentials
-            elif self.neuron_type == "Synaptic":
-                temp = self.neurons[i].init_synaptic()
-                syns.append(temp[0])
-                membranes.append(temp[1])
-
+ 
         for step in range(num_steps):
             spk = x[step] # input spikes at t=step
 
@@ -94,13 +100,13 @@ class SNN(nn.Module):
                     spk = self.dropout(spk) # apply dropout to hidden layers
 
                 if self.neuron_type == "Leaky":
-                    spk, membranes[i] = self.neurons[i](spk, membranes[i])
+                    spk, self.membranes[i] = self.neurons[i](spk, self.membranes[i])
                 
                 elif self.neuron_type == "Synaptic":
-                    spk, syns[i], membranes[i] = self.neurons[i](spk, syns[i], membranes[i])
+                    spk, self.syns[i], self.membranes[i] = self.neurons[i](spk, self.syns[i], self.membranes[i])
 
                 # record output layer membrane potentials and spikes
-                mem_recs[i].append(membranes[i].clone())
+                mem_recs[i].append(self.membranes[i].clone())
                 spk_recs[i].append(spk.clone())
             
         for i in range(len(self.neurons)):

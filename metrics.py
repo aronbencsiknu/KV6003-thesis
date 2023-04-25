@@ -65,14 +65,16 @@ class Metrics():
             return predicted
         
     # forward pass based on the network type
-    def forward_pass(self, net, x, num_steps, gaussian=False):
+    def forward_pass(self, net, x, num_steps, gaussian=False, time_first=False, real_time=False):
         if self.net_type=="OC_SCNN":
             if gaussian:
                 return net(x, num_steps, gaussian=True)
             
             return net(x, num_steps)
-        elif self.net_type=="CSNN" or self.net_type=="SNN":
+        elif self.net_type=="CSNN":
             return net(x, num_steps)
+        elif self.net_type=="SNN":
+            return net(x, num_steps, time_first=time_first, real_time=real_time)
         elif self.net_type=="CNN" or self.net_type=="RNN":
             return net(x)
     

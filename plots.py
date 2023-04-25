@@ -12,7 +12,7 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 plot spike trains
 #################
 """
-def plot_spike_trains(model, test_loader, num_steps, device, save_name):
+def plot_spike_trains(model, test_loader, num_steps, device, save_name, save=False):
     with torch.no_grad():
         spk_recs = get_spike_data(model, test_loader, num_steps, device)
     fig = plt.figure(facecolor="w", figsize=(5, 15))
@@ -21,7 +21,8 @@ def plot_spike_trains(model, test_loader, num_steps, device, save_name):
         add_subplot(spike_data=spk_rec, fig=fig, subplt_num=int(str(len(spk_recs))+str(1)+str(i + 1)))
 
     fig.tight_layout(pad=2)
-    plt.savefig("plots/spike-trains_"+save_name+".png")
+    if save:
+        plt.savefig("plots/spike-trains_"+save_name+".png")
     plt.show()
 
 def get_spike_data(model, test_loader, num_steps, device):
@@ -84,7 +85,7 @@ def plot_manipulated_window(data, targets):
 plot confusion matrix
 #####################
 """
-def plot_confusion_matrix(y_pred, y_true, save_name):
+def plot_confusion_matrix(y_pred, y_true, save_name, save=False):
 
     conf_matrix = confusion_matrix(y_true, y_pred, labels=[0,1])
     
@@ -92,7 +93,7 @@ def plot_confusion_matrix(y_pred, y_true, save_name):
     normalized_conf_matrix = np.round(normalized_conf_matrix, decimals=4)
 
     fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(15, 7.5))
-    #cmap = plt.get_cmap('jet', N)
+
     ax[0].matshow(conf_matrix)
     ax[1].matshow(normalized_conf_matrix)
 
@@ -112,6 +113,19 @@ def plot_confusion_matrix(y_pred, y_true, save_name):
     ax[1].set_ylabel('Targets', fontsize=18)
     ax[1].set_title('Normalized Confusion Matrix', fontsize=22)
 
+    if save:
+        plt.savefig("plots/conf-matrix_"+save_name+".png")
+    plt.show()
 
-    plt.savefig("plots/conf-matrix_"+save_name+".png")
+def plot_real_time(neuron1, neuron2):
+    
+    neuron1_avg = []
+    neuron2_avg = []
+    for i in range(20, len(neuron1)+20, 40):
+        for j in range(40):
+            neuron1_avg.append(np.mean(neuron1[i-20:i+20]))
+            neuron2_avg.append(np.mean(neuron2[i-20:i+20]))
+
+    plt.plot(neuron1_avg, label="neuron 1")
+    plt.plot(neuron2_avg, label="neuron 2")
     plt.show()

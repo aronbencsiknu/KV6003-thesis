@@ -1,0 +1,1 @@
+{"NeuronType": "Synaptic", "dropout": 0.3, "hidden_size": 256, "learn_alpha": true, "learn_beta": true, "learn_threshold": true, "learning_rate": 0.001, "num_hidden": 1, "surrogate_gradient": "sigmoid", "_wandb": {}}

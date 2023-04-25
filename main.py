@@ -54,7 +54,7 @@ if opt.sweep:
 if opt.train_method == "multiclass":
   oneclass = False
   train_data = LobsterData(path="Amazon", limit=20000)
-  test_data = LobsterData(path="Apple", limit=10000)
+  test_data = LobsterData(path="Apple", limit=40000)
 
   X_train, y_train, means = construct_dataset.prepare_data(train_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length, opt.subset_indeces, 0.11)
   X_test, y_test, _ = construct_dataset.prepare_data(test_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length, opt.subset_indeces, 0.11)
@@ -66,7 +66,8 @@ else:
   train_data = LobsterData(path="Amazon")
   test_data = LobsterData(path="Apple")
 
-  X_train, y_train, _ = construct_dataset.prepare_data(train_data.orderbook_data, False, opt.window_length, opt.window_overlap, opt.manipulation_length)
+  if not opt.load_model:
+    X_train, y_train, _ = construct_dataset.prepare_data(train_data.orderbook_data, False, opt.window_length, opt.window_overlap, opt.manipulation_length)
   X_test, y_test, _ = construct_dataset.prepare_data(test_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length)
 
   X_train, _, y_train, _ = train_test_split(X_train, y_train, test_size=0.2, random_state=42)
@@ -78,36 +79,43 @@ feature_dimensionality = np.shape(X_train)[2]
 if opt.input_encoding == "population":
   receptive_encoder = CUBALayer(feature_dimensionality=feature_dimensionality, population_size=10, means=means)
   opt.num_steps = int(receptive_encoder.T/receptive_encoder.dt) * opt.window_length # override num_steps
-  receptive_encoder.display_tuning_curves() # plot tuning curves
+  #receptive_encoder.display_tuning_curves() # plot tuning curves
 
 else:
   receptive_encoder = None
-  
+
+#if not opt.load_model:
 train_set = CustomDataset(data=X_train, targets=y_train, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type, pop_encoder=receptive_encoder)
-test_set = CustomDataset(data=X_test, targets=y_test, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type, pop_encoder=receptive_encoder)
-val_set = CustomDataset(data=X_val, targets=y_val, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type, pop_encoder=receptive_encoder)
-
-print("\n----------------------------------\n")
-print("Class counts: ")
-print("\t- 0:", train_set.n_samples_per_class[0])
-print("\t- 1:", train_set.n_samples_per_class[1])
-print("\n----------------------------------\n")
-
-
 train_loader = DataLoader(train_set, batch_size=opt.batch_size, shuffle=True)
+
+test_set = CustomDataset(data=X_test, targets=y_test, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type, pop_encoder=receptive_encoder)
 test_loader = DataLoader(test_set, batch_size=opt.batch_size, shuffle=True)
+
+val_set = CustomDataset(data=X_val, targets=y_val, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type, pop_encoder=receptive_encoder)
 val_loader = DataLoader(val_set, batch_size=opt.batch_size, shuffle=True)
 
+print("\n----------------------------------\n")
+print("Class counts train: ")
+print("\t- 0:", train_set.n_samples_per_class[0])
+print("\t- 1:", train_set.n_samples_per_class[1])
+print("Class counts test: ")
+print("\t- 0:", test_set.n_samples_per_class[0])
+print("\t- 1:", test_set.n_samples_per_class[1])
+print("\n----------------------------------\n")
 print("Train set size:\t\t", len(train_set))
 print("Test set size:\t\t", len(test_set))
 print("Validation set size:\t", len(val_set))
 print("\n----------------------------------\n")
 
-data, _ = next(iter(train_loader))
+data, _ = next(iter(test_loader))
 input_size = np.shape(data)[2]
 
-metrics = Metrics(opt.net_type, opt.set_type, opt.output_decoding, train_set, opt.device, opt.num_steps, oneclass)
-early_stopping = EarlyStopping(patience=20, verbose=True)
+if opt.load_model:
+  metrics = Metrics(opt.net_type, opt.set_type, opt.output_decoding, test_set, opt.device, opt.num_steps, oneclass)
+else:
+  metrics = Metrics(opt.net_type, opt.set_type, opt.output_decoding, train_set, opt.device, opt.num_steps, oneclass)
+
+early_stopping = EarlyStopping(patience=100, verbose=True)
 
 # Select model
 if opt.train_method == "oneclass":
@@ -128,7 +136,16 @@ elif opt.net_type=="CSNN":
   model = CSNN(batch_size=opt.batch_size, input_size=feature_dimensionality).to(opt.device)
   
 elif opt.net_type=="SNN":
-  model = SNN(input_size=input_size, hidden_size=opt.hidden_size, output_size=2).to(opt.device)
+  if opt.load_model_dict:
+    name_dict = opt.load_name + ".json"
+    path_p_dict = pathlib.Path(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / name_dict)
+
+    p_dict = open(path_p_dict)
+    p_dict = json.load(p_dict)
+
+    model = SNN(input_size=input_size, hidden_size=opt.hidden_size, output_size=2, h_params=p_dict).to(opt.device)
+  else:  
+    model = SNN(input_size=input_size, hidden_size=opt.hidden_size, output_size=2).to(opt.device)
 
 elif opt.net_type=="CNN":
   model = CNN(input_size=feature_dimensionality).to(opt.device)
@@ -223,6 +240,22 @@ def sweep_train(config=None):
       network.load_state_dict(torch.load('checkpoint.pt')) # load best model
       torch.save(network.state_dict(), path_model)
 
+def load_model():
+  name_model = opt.load_name + ".pt"
+  name_dict = opt.load_name + ".json"
+  path_model = pathlib.Path(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / name_model)
+  path_p_dict = pathlib.Path(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / name_dict)
+
+  p_dict = open(path_p_dict)
+
+  # returns JSON object as 
+  # a dictionary
+  p_dict = json.load(p_dict)
+
+  model = SNN(input_size=input_size, hidden_size=opt.hidden_size, output_size=2, h_params=p_dict).to(opt.device)
+  model.load_state_dict(torch.load(path_model, map_location=torch.device(opt.device)))
+
+  return model
 
 def forward_pass_eval(model,dataloader, early_stopping, logging_index, testing=False):
 
@@ -238,19 +271,7 @@ def forward_pass_eval(model,dataloader, early_stopping, logging_index, testing=F
     print("loading best model...")
 
     if opt.load_model:
-      name_model = opt.load_name + ".pt"
-      name_dict = opt.load_name + ".json"
-      path_model = pathlib.Path(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / name_model)
-      path_p_dict = pathlib.Path(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / name_dict)
-
-      p_dict = open(path_p_dict)
-  
-      # returns JSON object as 
-      # a dictionary
-      p_dict = json.load(p_dict)
-
-      model = SNN(input_size=input_size, hidden_size=opt.hidden_size, output_size=2, h_params=p_dict).to(opt.device)
-      model.load_state_dict(torch.load(path_model))
+      model = load_model()
     else:
       model.load_state_dict(torch.load('checkpoint.pt')) # load best model
 
@@ -264,6 +285,7 @@ def forward_pass_eval(model,dataloader, early_stopping, logging_index, testing=F
         torch.save(model.state_dict(), path)
 
   with torch.no_grad():
+
     for batch_idx, (data, target) in enumerate(dataloader):
 
       data=data.to(opt.device)
@@ -288,6 +310,7 @@ def forward_pass_eval(model,dataloader, early_stopping, logging_index, testing=F
                     "Test index": logging_index})
 
       predicted = metrics.return_predicted(output)
+
       if len(data)==opt.batch_size and testing:
         for i in range(opt.batch_size):
           y_pred.append(predicted[i].item())
@@ -314,18 +337,19 @@ def forward_pass_eval(model,dataloader, early_stopping, logging_index, testing=F
     print("Recall:\t%.3f"% metrics.recall())
     print("F1-Score:\t%.3f"% metrics.f1_score() +"\n")
 
-    with open('results/'+opt.run_name+'.txt', 'w') as file:
+    if opt.save_results:
+      with open('results/'+opt.run_name+'.txt', 'w') as file:
 
-      # Write the values to the text file
-      file.write("\nTest loss: "+str(loss))
-      file.write("\nTest acc: "+str(acc))
-      file.write("\nPrecision: "+str(metrics.precision()))
-      file.write("\nRecall: "+str(metrics.recall()))
-      file.write("\nF1-Score: "+str(metrics.f1_score()))
+        # Write the values to the text file
+        file.write("\nTest loss: "+str(loss))
+        file.write("\nTest acc: "+str(acc))
+        file.write("\nPrecision: "+str(metrics.precision()))
+        file.write("\nRecall: "+str(metrics.recall()))
+        file.write("\nF1-Score: "+str(metrics.f1_score()))
 
-      file.close()
+        file.close()
 
-    plots.plot_confusion_matrix(y_pred, y_true, opt.run_name)
+    plots.plot_confusion_matrix(y_pred, y_true, opt.run_name, opt.save_results)
   else:
     print("Val loss:\t%.3f" % loss)
     print("Val acc:\t%.3f"% acc+"%\n")
@@ -338,11 +362,38 @@ def forward_pass_eval(model,dataloader, early_stopping, logging_index, testing=F
 
     return logging_index, stop_early, loss, acc
 
+def real_time_eval(model, dataloader):
+  model = load_model()
+  real_time_spk = []
+  neuron1 = []
+  neuron2 = []
+  for batch_idx, (data, target) in enumerate(dataloader):
+    data=data.to(opt.device)
+    target=target.to(opt.device)
+
+    if data.shape[0] == opt.batch_size:
+      for i in range(opt.batch_size):
+        if target[i] == 0:
+          output = metrics.forward_pass(model, data[i], opt.num_steps, time_first=True, real_time=False)
+
+          output = output[0][-1]
+        #output = torch.permute(output, (1,0))
+
+          for j in range(opt.num_steps):
+            neuron1.append(output[j][0].item())
+            neuron2.append(output[j][1].item())
+
+      #real_time_spk.append(output[0][0].item())
+
+  plots.plot_real_time(neuron1, neuron2)
+  
+  return real_time_spk
+
 logging_index_train = 0
 logging_index_forward_eval = 0
 stop_early = False
 
-if not opt.load_model and not opt.sweep:
+if not opt.load_model and not opt.sweep and not opt.real_time:
   for epoch in range(1, opt.num_epochs+1):
 
     model, logging_index_train, _ = train_epoch(model,train_loader,optimizer,epoch, logging_index_train)
@@ -355,6 +406,8 @@ if not opt.load_model and not opt.sweep:
 
 if opt.sweep:
   wandb.agent(sweep_id, sweep_train, count=50)
+elif opt.real_time:
+  real_time_eval(model, test_loader)
 else:
   forward_pass_eval(model, test_loader, early_stopping, logging_index_forward_eval, testing=True)
 
@@ -362,4 +415,6 @@ if opt.wandb_logging:
   wandb.finish()
 
 if opt.set_type=="spiking":
-  plots.plot_spike_trains(model, test_loader, opt.num_steps, opt.device, opt.run_name)
+  if opt.load_model:
+    model = load_model()
+  plots.plot_spike_trains(model, test_loader, opt.num_steps, opt.device, opt.run_name, opt.save_results)

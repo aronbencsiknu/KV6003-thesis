@@ -17,8 +17,11 @@ class Options(object):
         self.argparser.add_argument("--wandb_entity", type=str, default="aronbencsik", help="Weights&Biases entity name")
         self.argparser.add_argument("--net_type", type=str, default="SNN",choices=["SNN", "CSNN", "CNN", "OC_SCNN", "RNN"], help="Type of network to use (SNN, CSNN, CNN, OC_SCNN, RNN)")
         self.argparser.add_argument("-s", "--save_model", action='store_true', help="Save the model when finished training")
-        self.argparser.add_argument("-l", "--load_model", action='store_true', help="Skip training and load a model")
+        self.argparser.add_argument("-lm", "--load_model", action='store_true', help="Skip training and load a model")
+        self.argparser.add_argument("-ld", "--load_model_dict", action='store_true', help="Load a model hyperparameter dictionary")
+        self.argparser.add_argument("-r", "--real_time", action='store_true', help="Skip training and load a model")
         self.argparser.add_argument("-sw", "--sweep", action='store_true', help="Perform a hyperparameter sweep with Weights&Biases")
+        self.argparser.add_argument("-sr", "--save_results", action='store_true', help="Perform a hyperparameter sweep with Weights&Biases")
         self.argparser.add_argument("--num_epochs", type=int, default=100, help="Number of epochs to train for")
         self.argparser.add_argument("--batch_size", type=int, default=64, help="Batch size")
         self.argparser.add_argument("--num_steps", type=int, default=100, help="Number of time steps to simulate")
@@ -29,7 +32,7 @@ class Options(object):
         self.argparser.add_argument("--window_overlap", type=float, default=0.0, help="Overlap of windows in the dataset")
         self.argparser.add_argument("--train_method", type=str, default="multiclass", choices=["multiclass", "oneclass"], help="Method to use for training (multiclass, oneclass)")
         self.argparser.add_argument("--manipulation_length", type=int, default=3, help="Length of the injected manipulations")
-        self.argparser.add_argument("--subset_indeces", nargs='+',default=[4,5,6,7], help='Hidden layer size')
+        self.argparser.add_argument("--subset_indeces", nargs='+',default=[4,6], help='Hidden layer size')
 
         self.initialized = True
 
@@ -64,5 +67,6 @@ class Options(object):
         self.opt.run_name = self.opt.net_type + "_" + self.opt.input_encoding + "-to-" + self.opt.output_decoding + "_" + self.opt.neuron_type + "_price30-volume4"
         self.opt.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-        self.opt.load_name = "100.0_SNN_rate-to-rate_Leaky_price30-volume4"
+        self.opt.load_name = "final_leaky"
+        
         return self.opt
