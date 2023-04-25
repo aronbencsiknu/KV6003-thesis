@@ -21,7 +21,6 @@ main.py can be run using the following flags:
 - ```--batch_size``` Batch size
 - ```--save_model``` Save model weights at the end of the training
 - ```--load_model``` Load trained model. Enabling this skips the training loop.
-- ```--wandb_logging``` Enable logging to [Weights&Biases](https://www.wandb.ai)
 - ```--learning_rate``` Learning rate of the optimizer
 - ```--hidden_size``` Hidden size of the defined network
 - ```--neuron_type``` Type of spiking neuron model (Leaky, Synaptic)
