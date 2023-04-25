@@ -16,7 +16,7 @@ main.py can be run using the following flags:
   - ```--wandb_project``` Weights&Biases project name
   - ```--wandb_entity```  Weights&Biases entity name (username)
 - ```--sweep``` Run a hyperparameter search, which is logged to [Weights&Biases](https://www.wandb.ai)
-- ```--net_type``` Type of neural network (SNN, CSNN, CNN, OC_CSNN)
+- ```--net_type``` Type of neural network
 - ```--num_epochs``` Number of training epochs
 - ```--batch_size``` Batch size
 - ```--save_model``` Save model weights at the end of the training
