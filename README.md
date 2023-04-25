@@ -28,3 +28,4 @@ main.py can be run using the following flags:
 - ```--window_length``` Lenght of window to slice the input data stream
 - ```--window_overlap``` Overlap of the sliding window
 - ```--manipulation_length``` Lenght of the injected artificial manipulations
+- ```--subset_indeces``` Select which features to use
