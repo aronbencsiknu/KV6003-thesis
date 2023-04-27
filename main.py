@@ -87,7 +87,7 @@ if opt.input_encoding == "population":
 
   receptive_encoder = CUBALayer(feature_dimensionality=feature_dimensionality, population_size=10, means=means, predefined_gains=None)
   opt.num_steps = int(receptive_encoder.T/receptive_encoder.dt) * opt.window_length # override num_steps
-  #receptive_encoder.display_tuning_curves() # plot tuning curves
+  receptive_encoder.display_tuning_curves() # plot tuning curves
 
 else:
   receptive_encoder = None
@@ -165,6 +165,7 @@ def train_epoch(net, train_loader,optimizer,epoch, logging_index):
 
   net.train()
   loss_val=0
+
   print("\nEpoch:\t\t",epoch,"/",opt.num_epochs)
   for batch_idx, (data, target) in enumerate(train_loader):
       data=data.to(opt.device)
@@ -248,8 +249,8 @@ def sweep_train(config=None):
       torch.save(network.state_dict(), path_model)
 
 def load_model():
-  name_model = opt.load_name + ".pt"
-  name_dict = opt.load_name + ".json"
+  name_model = opt.load_name + "_model.pt"
+  name_dict = opt.load_name + "_dict.json"
   path_model = pathlib.Path(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / name_model)
   path_p_dict = pathlib.Path(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / name_dict)
 

@@ -15,6 +15,7 @@ class Options(object):
         self.argparser.add_argument("-wb", "--wandb_logging", action='store_true', help="enable logging to Weights&Biases")
         self.argparser.add_argument("--wandb_project", type=str, default="thesis_results_final", help="Weights&Biases project name")
         self.argparser.add_argument("--wandb_entity", type=str, default="aronbencsik", help="Weights&Biases entity name")
+         self.argparser.add_argument("--load_name", type=str, default="final", help="Name of the model, hyperparameter dictionary and gain values to load")
         self.argparser.add_argument("--net_type", type=str, default="SNN",choices=["SNN", "CSNN", "CNN", "OC_SCNN", "RNN"], help="Type of network to use (SNN, CSNN, CNN, OC_SCNN, RNN)")
         self.argparser.add_argument("-sm", "--save_model", action='store_true', help="Save the model when finished training")
         self.argparser.add_argument("-lm", "--load_model", action='store_true', help="Skip training and load a model")
@@ -68,7 +69,5 @@ class Options(object):
         # Set the run name for saving models, plots, etc.
         self.opt.run_name = self.opt.net_type + "_" + self.opt.input_encoding + "-to-" + self.opt.output_decoding + "_" + self.opt.neuron_type + "_price30-volume4"
         self.opt.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-
-        self.opt.load_name = "gain_test"
         
         return self.opt
