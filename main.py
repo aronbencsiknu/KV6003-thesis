@@ -54,8 +54,8 @@ if opt.sweep:
 
 if opt.train_method == "multiclass":
   oneclass = False
-  train_data = LobsterData(path="Amazon", limit=20000)
-  test_data = LobsterData(path="Apple", limit=40000)
+  train_data = LobsterData(path="Amazon", limit=2000)
+  test_data = LobsterData(path="Apple", limit=2000)
 
   X_train, y_train, means = construct_dataset.prepare_data(train_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length, opt.subset_indeces, 0.11)
   X_test, y_test, _ = construct_dataset.prepare_data(test_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length, opt.subset_indeces, 0.11)
@@ -79,8 +79,9 @@ feature_dimensionality = np.shape(X_train)[2]
 
 if opt.input_encoding == "population":
   if opt.load_model:
-    gains = np.load(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / "gains.npy")
-
+    gain_name = opt.load_name+".npy"
+    gains = np.load(pathlib.Path(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / gain_name))
+    print(gains)
   else:
     gains = None
 
@@ -290,10 +291,10 @@ def forward_pass_eval(model,dataloader, early_stopping, logging_index, testing=F
         if opt.input_encoding=="population":
             gains = []
             for population in receptive_encoder.populations:
-              gains.append(population.gain)
+              gains.append(population.gains)
             gains = np.array(gains)
-            gains_name ="gains.npy"
-            path = pathlib.Path(pathlib.Path.cwd() / "trained_models") / gains_name
+            gains_name ="gain_test.npy"
+            path = pathlib.Path(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / gains_name)
             np.save(path, gains)
 
       if opt.net_type=="OC_SCNN" and opt.train_method=="multiclass":

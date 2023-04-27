@@ -43,9 +43,9 @@ class Metrics():
             else:
                 loss = self.loss_fn(y_pred, y_true)
         else:
-            #print("Non-spiking network")
             y_pred = output
-            loss = self.loss_fn(y_pred, y_true)  
+            loss = self.loss_fn(y_pred, y_true) 
+            
         return loss
 
     # return the predicted class from spike trains
@@ -53,7 +53,7 @@ class Metrics():
         if not self.spiking:
             ps = torch.exp(output)
             top_class = torch.argmax(ps, dim=1)
-            #print(top_class)
+            
             return top_class
         else:
             y_pred = output[0][-1]

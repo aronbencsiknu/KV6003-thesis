@@ -69,6 +69,6 @@ class Options(object):
         self.opt.run_name = self.opt.net_type + "_" + self.opt.input_encoding + "-to-" + self.opt.output_decoding + "_" + self.opt.neuron_type + "_price30-volume4"
         self.opt.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-        self.opt.load_name = "final"
+        self.opt.load_name = "gain_test"
         
         return self.opt
