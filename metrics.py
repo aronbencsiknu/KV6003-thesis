@@ -1,7 +1,5 @@
 from snntorch import functional
 import torch
-import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix
 from loss import mse_count_loss
 
 class Metrics():
@@ -45,7 +43,7 @@ class Metrics():
         else:
             y_pred = output
             loss = self.loss_fn(y_pred, y_true) 
-            
+
         return loss
 
     # return the predicted class from spike trains

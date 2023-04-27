@@ -1,5 +1,4 @@
 import torch
-from snntorch import functional
 import argparse
 
 
