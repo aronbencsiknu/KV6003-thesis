@@ -3,7 +3,7 @@ import pathlib
 import numpy as np
 
 class LobsterData:
-    def __init__(self, path, limit=20000):
+    def __init__(self, path, limit=None):
         
         self.path = pathlib.Path(pathlib.Path.cwd() / "data" / path)
 
@@ -22,7 +22,10 @@ class LobsterData:
             reader = csv.reader(file)
             count = 0
             for row in reader:
-                if count < limit:
+                if limit is not None:
+                    if count < limit:
+                        self.orderbook_data.append(row)
+                else:
                     self.orderbook_data.append(row)
                 
                 count += 1

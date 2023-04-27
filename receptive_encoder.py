@@ -26,7 +26,7 @@ class CUBANeuron(nn.Module):
         
         if not self.fired:
 
-            # Update membrane potential using Euler method
+            # Update membrane potential
             self.V = math.exp(-dt/self.tau) * self.V + self.g * Iext
             self.voltages.append(self.V)
             
@@ -44,7 +44,7 @@ class CUBANeuron(nn.Module):
         
     def tune_forward(self, Iext, dt, index):
 
-        # Update membrane potential using Euler method
+        # Update membrane potential
         self.V = math.exp(-dt/self.tau) * self.V + self.g * Iext
         self.voltages.append(self.V)
         
@@ -60,7 +60,7 @@ class CUBANeuron(nn.Module):
 
 
 class CUBAPopulation():
-    def __init__(self, population_size, tau=0.1, g=-5.0, Vth=1, dt=0.001, T=0.1, intercept_low=0.0, intercept_high=0.1):
+    def __init__(self, population_size, tau=0.1, g=-5.0, Vth=1, dt=0.001, T=0.1, intercept_low=0.0, intercept_high=0.1, predefined_gains=None):
 
         self.population_size = population_size
         self.tau = tau
@@ -73,7 +73,12 @@ class CUBAPopulation():
 
         self.neurons = []
 
-        self.gains = self.tune_receptive_fields(population_size, intercept_low, intercept_high, tau, dt, T, Vth)
+        if predefined_gains is not None:
+            self.gains = predefined_gains
+            
+        else:
+            self.gains = self.tune_receptive_fields(population_size, intercept_low, intercept_high, tau, dt, T, Vth)
+
         self.create_neurons()       
     
     def create_neurons(self):
@@ -150,7 +155,7 @@ class CUBAPopulation():
 
 
 class CUBALayer():
-    def __init__(self, feature_dimensionality, population_size, means, tau=0.8, g=-5.0, Vth=1, dt=0.01, T=0.1):
+    def __init__(self, feature_dimensionality, population_size, means, tau=0.8, g=-5.0, Vth=1, dt=0.01, T=0.1, predefined_gains=None):
 
         self.feature_dimensionality = feature_dimensionality # number of populations
         self.population_size = population_size # number of neurons in each population
@@ -162,8 +167,14 @@ class CUBALayer():
 
         self.populations = []
 
+        
         for i in range(self.feature_dimensionality):
-            self.populations.append(CUBAPopulation(population_size, tau, g, Vth, dt, T, intercept_low=0.0, intercept_high=means[i]))
+            if predefined_gains is not None:
+                gains = predefined_gains[i]
+
+            else:
+                gains = None
+            self.populations.append(CUBAPopulation(population_size, tau, g, Vth, dt, T, intercept_low=0.0, intercept_high=means[i], predefined_gains=gains))
             
 
     def forward(self, Iext, index=None):

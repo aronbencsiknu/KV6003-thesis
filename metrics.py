@@ -45,9 +45,6 @@ class Metrics():
         else:
             #print("Non-spiking network")
             y_pred = output
-            #print(y_true)
-            #print("#############################################")
-            #print(y_pred)
             loss = self.loss_fn(y_pred, y_true)  
         return loss
 

@@ -43,6 +43,7 @@ if opt.wandb_logging:
   
 if opt.sweep:
   sweep_handler = SweepHandler()
+
   # init wandb sweep
   key=opt.wandb_key
   wandb.login(key=key)
@@ -77,7 +78,13 @@ else:
 feature_dimensionality = np.shape(X_train)[2]
 
 if opt.input_encoding == "population":
-  receptive_encoder = CUBALayer(feature_dimensionality=feature_dimensionality, population_size=10, means=means)
+  if opt.load_model:
+    gains = np.load(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / "gains.npy")
+
+  else:
+    gains = None
+
+  receptive_encoder = CUBALayer(feature_dimensionality=feature_dimensionality, population_size=10, means=means, predefined_gains=None)
   opt.num_steps = int(receptive_encoder.T/receptive_encoder.dt) * opt.window_length # override num_steps
   #receptive_encoder.display_tuning_curves() # plot tuning curves
 
@@ -142,7 +149,6 @@ elif opt.net_type=="SNN":
 
     p_dict = open(path_p_dict)
     p_dict = json.load(p_dict)
-
     model = SNN(input_size=input_size, hidden_size=opt.hidden_size, output_size=2, h_params=p_dict).to(opt.device)
   else:  
     model = SNN(input_size=input_size, hidden_size=opt.hidden_size, output_size=2).to(opt.device)
@@ -226,7 +232,7 @@ def sweep_train(config=None):
 
       config_dict = config.__dict__
       config_dict = config_dict["_items"]
-      print(config_dict)
+
       dict_name = str(max_acc)+ "_" + opt.run_name + ".json"
       path_p_dict = pathlib.Path(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / dict_name)
      
@@ -279,7 +285,17 @@ def forward_pass_eval(model,dataloader, early_stopping, logging_index, testing=F
         model_name = opt.run_name + ".pt"
         path = pathlib.Path(pathlib.Path.cwd() / "trained_models") / model_name
         torch.save(model.state_dict(), path)
-      
+
+        # save gains
+        if opt.input_encoding=="population":
+            gains = []
+            for population in receptive_encoder.populations:
+              gains.append(population.gain)
+            gains = np.array(gains)
+            gains_name ="gains.npy"
+            path = pathlib.Path(pathlib.Path.cwd() / "trained_models") / gains_name
+            np.save(path, gains)
+
       if opt.net_type=="OC_SCNN" and opt.train_method=="multiclass":
         path = pathlib.Path(pathlib.Path.cwd() / "trained_models") / "oneclass.pt"
         torch.save(model.state_dict(), path)
