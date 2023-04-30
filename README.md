@@ -1,6 +1,13 @@
 # Detecting Stock Market Manipulation using Deep Spiking Neural Networks
 
 This is the practical work for my undergraduate thesis at Northumbria University, Newcastle.
+<details>
+  <summary>Read more</summary>
+
+  The behaviour of Spiking Neural Networks (SNNs) is inspired by biological brains, where information is represented by a series of action potentials. This contrasts with  conventional artificial neural networks (ANNs), which use vectors as inputs, and model the neuron soma behaviour using a non-linear activation function. On neuromorphic hardware, SNNs promise to be significantly more energy efficient than current ANNs, while being particularly suited for signal processing applications. During trade-based stock market manipulation, malicious actors use legitimate trades to influence a stock price for personal gains. This form of manipulation is illegal. However, since it is conducted through legitimate instruments, detecting it is difficult. In this work, SNNs are applied to the detection of trade-based manipulation patterns in stock market data. Several spiking and non-spiking architectures are implemented and their performances are compared. Furthermore, multiple spike encoding techniques are tested, including a temporal population encoding method, which fully leverages the complex spatiotemporal properties of SNNs. The findings suggest that SNNs are able to achieve state-of-the-art performance in this task. Moreover, it is shown that SNNs are capable of effectively learning temporally encoded spike trains, along with commonly used rate-coded ones.
+
+</details>
+
 
 ## Installation
 
@@ -27,7 +34,7 @@ The program can be run in 6 main ways:
 | ```python main.py -rt``` |  |
 | ```python main.py -sw``` | runs a hyperparameter sweep |
 
-Additionally, the following arguments can be specified to customize the training or testing
+Additionally, the following arguments can be specified to customize the training or testing:
 
 | Argument  | Description |
 | ------------- | ------------- |
