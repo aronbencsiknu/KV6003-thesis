@@ -4,8 +4,16 @@ This is the practical work for my undergraduate thesis at Northumbria University
 
 ## Installation
 
-1. Install [Python](https://www.python.org/downloads/)
-2. Install the required libraries using the command ```pip install -r requirements.txt```
+Create conda environment:
+```
+conda env create -f environment.yml
+conda activate snn_aronbencsik
+```
+
+Alternatively, install the required libraries via pip
+```
+pip3 install -r requirements.txt
+```
 
 ## Usage
 The program can be run in 3 main ways:
@@ -35,4 +43,4 @@ Additionally, the following command line arguments can be used to customize the 
 
 ## Examples
 
-...
+```python main.py --input_encoding population -ld -lm```
