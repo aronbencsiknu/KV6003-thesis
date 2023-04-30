@@ -86,8 +86,9 @@ class CUBAPopulation():
             self.neurons.append(CUBANeuron(tau=self.tau, g=self.gains[i], Vth=self.Vth, dt=self.dt, T=self.T))
 
     def tune_receptive_fields(self, count, intercept_low, intercept_high, tau, dt, T, Vth):
-        gain = []
+        gains = []
         tau_list = np.linspace(0.1, 0.9, num=count)
+        divider_constant = 32
 
         if intercept_high > 0.1:
             intercepts = np.linspace(intercept_low + 1e-2, intercept_high, num=count)
@@ -111,17 +112,17 @@ class CUBAPopulation():
             counter = 0
             while last_voltage >= Vth + 1e-5:
                 counter += 1
-                g_min = g_min - ((last_voltage - Vth)/32) * multiplier
+                g_min = g_min - ((last_voltage - Vth)/divider_constant) * multiplier
                 test_neuron = CUBANeuron(tau_list[i], g_min, Vth, dt, T)
                 for j in range(0, int(T/dt)):
                     test_neuron.tune_forward(intercept_current, dt, j)
 
                 last_voltage = test_neuron.voltages[-1]
 
-            gain.append(g_min)
+            gains.append(g_min)
 
         bar.finish()
-        return gain
+        return gains
     
     def reset_neurons(self):
         self.neurons = []

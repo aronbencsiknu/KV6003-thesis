@@ -4,7 +4,6 @@ import snntorch as snn
 from snntorch import surrogate
 from snntorch import spikegen
 import numpy as np
-import random
 
 
 """
@@ -14,7 +13,6 @@ Feedforward SNN with leaky or synaptic neurons
 """
 
 class SNN(nn.Module):
-    
     def __init__(self, input_size, hidden_size, output_size=2, beta=0.5, alpha=0.5, dropout=0.5, spike_grad=surrogate.atan(), neuron_type="Leaky", learn_beta=False, learn_alpha=False, learn_threshold=True, h_params=None):
         super().__init__()
 

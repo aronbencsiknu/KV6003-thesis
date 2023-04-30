@@ -55,8 +55,8 @@ if opt.sweep:
 
 if opt.train_method == "multiclass":
   oneclass = False
-  train_data = LobsterData(path="Amazon", limit=40000)
-  test_data = LobsterData(path="Apple", limit=20000)
+  train_data = LobsterData(path="Amazon", limit=10000)
+  test_data = LobsterData(path="Apple", limit=10000)
 
   X_train, y_train, means = construct_dataset.prepare_data(train_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length, opt.subset_indeces, 0.11)
   X_test, y_test, _ = construct_dataset.prepare_data(test_data.orderbook_data, True, opt.window_length, opt.window_overlap, opt.manipulation_length, opt.subset_indeces, 0.11)
@@ -82,14 +82,25 @@ feature_dimensionality = np.shape(X_train)[2]
 # create receptive encoder if encoding is population
 if opt.input_encoding == "population":
   if opt.load_model:
-    gain_name = opt.load_name+".npy"
+    gain_name = opt.load_name+"_gains.npy"
     gains = np.load(pathlib.Path(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / gain_name))
-    print(gains)
+
   else:
     gains = None
 
-  receptive_encoder = CUBALayer(feature_dimensionality=feature_dimensionality, population_size=10, means=means, predefined_gains=None)
+  receptive_encoder = CUBALayer(feature_dimensionality=feature_dimensionality, population_size=10, means=means, predefined_gains=gains)
   opt.num_steps = int(receptive_encoder.T/receptive_encoder.dt) * opt.window_length # override num_steps
+
+  # save gains
+  if opt.save_model and not opt.load_model:
+    gains = []
+    for population in receptive_encoder.populations:
+      gains.append(population.gains)
+    gains = np.array(gains)
+    gains_name = opt.run_name + "_gains.npy"
+    path = pathlib.Path(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / gains_name)
+    np.save(path, gains)
+
   receptive_encoder.display_tuning_curves() # plot tuning curves
 
 else:
@@ -153,7 +164,7 @@ elif opt.net_type=="SNN":
 
   # load hyperparameter dictionary if specified
   if opt.load_model_dict:
-    name_dict = opt.load_name + ".json"
+    name_dict = opt.load_name + "_dict.json"
     path_p_dict = pathlib.Path(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / name_dict)
 
     p_dict = open(path_p_dict)
@@ -244,7 +255,7 @@ def sweep_train(config=None):
       config_dict = config.__dict__
       config_dict = config_dict["_items"]
 
-      dict_name = str(max_acc)+ "_" + opt.run_name + ".json"
+      dict_name = str(max_acc)+ "_" + opt.run_name + "_dict.json"
       path_p_dict = pathlib.Path(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / dict_name)
      
       with open(path_p_dict, 'w') as f:
@@ -292,19 +303,19 @@ def forward_pass_eval(model,dataloader, early_stopping, logging_index, testing=F
       model.load_state_dict(torch.load('checkpoint.pt')) # load best model
 
       if opt.save_model:
-        model_name = opt.run_name + ".pt"
+        model_name = opt.run_name + "_model.pt"
         path = pathlib.Path(pathlib.Path.cwd() / "trained_models") / model_name
         torch.save(model.state_dict(), path)
 
-        # save gains
+        """# save gains
         if opt.input_encoding=="population":
             gains = []
             for population in receptive_encoder.populations:
               gains.append(population.gains)
             gains = np.array(gains)
-            gains_name ="gain_test.npy"
+            gains_name = opt.run_name + "_gains.npy"
             path = pathlib.Path(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / gains_name)
-            np.save(path, gains)
+            np.save(path, gains)"""
 
       if opt.net_type=="OC_SCNN" and opt.train_method=="multiclass":
         path = pathlib.Path(pathlib.Path.cwd() / "trained_models") / "oneclass.pt"

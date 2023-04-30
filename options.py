@@ -1,13 +1,22 @@
 import torch
 import argparse
 
-
 class Options(object):
     def __init__(self):
         self.argparser = argparse.ArgumentParser()
         self.initialized = False
 
     def add_args(self):
+
+        self.argparser.add_argument("-sm", "--save_model", action='store_true', help="Save the model when finished training")
+        self.argparser.add_argument("-lm", "--load_model", action='store_true', help="Skip training and load a model")
+        self.argparser.add_argument("-ld", "--load_model_dict", action='store_true', help="Load a model hyperparameter dictionary")
+        self.argparser.add_argument("-rt", "--real_time", action='store_true', help="Skip training and load a model")
+        self.argparser.add_argument("-sw", "--sweep", action='store_true', help="Perform a hyperparameter sweep with Weights&Biases")
+        self.argparser.add_argument("-sr", "--save_results", action='store_true', help="Perform a hyperparameter sweep with Weights&Biases")
+        
+        # ----------------------------
+        
         self.argparser.add_argument("--path", type=str, default="Amazon", choices=["Amazon", "Intel", "Apple", "Microsoft", "Google"], help="Dataset to use (Amazon, Intel, Apple, Microsoft, Google)")
         self.argparser.add_argument("--output_decoding", type=str, default="rate", choices=["rate", "latency"], help="input encoding (rate, latency)")
         self.argparser.add_argument("--input_encoding", type=str, default="rate", choices=["rate", "latency", "population"], help="output decoding (rate, latency, population)")
@@ -16,12 +25,6 @@ class Options(object):
         self.argparser.add_argument("--wandb_entity", type=str, default="aronbencsik", help="Weights&Biases entity name")
         self.argparser.add_argument("--load_name", type=str, default="final", help="Name of the model, hyperparameter dictionary and gain values to load")
         self.argparser.add_argument("--net_type", type=str, default="SNN",choices=["SNN", "CSNN", "CNN", "OC_SCNN", "RNN"], help="Type of network to use (SNN, CSNN, CNN, OC_SCNN, RNN)")
-        self.argparser.add_argument("-sm", "--save_model", action='store_true', help="Save the model when finished training")
-        self.argparser.add_argument("-lm", "--load_model", action='store_true', help="Skip training and load a model")
-        self.argparser.add_argument("-ld", "--load_model_dict", action='store_true', help="Load a model hyperparameter dictionary")
-        self.argparser.add_argument("-r", "--real_time", action='store_true', help="Skip training and load a model")
-        self.argparser.add_argument("-sw", "--sweep", action='store_true', help="Perform a hyperparameter sweep with Weights&Biases")
-        self.argparser.add_argument("-sr", "--save_results", action='store_true', help="Perform a hyperparameter sweep with Weights&Biases")
         self.argparser.add_argument("--num_epochs", type=int, default=100, help="Number of epochs to train for")
         self.argparser.add_argument("--batch_size", type=int, default=64, help="Batch size")
         self.argparser.add_argument("--num_steps", type=int, default=100, help="Number of time steps to simulate")
