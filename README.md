@@ -56,4 +56,7 @@ Additionally, the following arguments can be specified to customize the training
 
 ## Examples
 
-```python main.py --input_encoding population -ld -lm```
+Run the feedforward SNN with the temporal population encoding. A pre-trained model is loaded, along with the optimal hyperparameter dictionary and the pre-trained encoder. The confusion matrices, spike raster plots and performance metrics are displayed.
+```
+python main.py --input_encoding population -ld -lm
+```
