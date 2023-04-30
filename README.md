@@ -16,15 +16,20 @@ pip3 install -r requirements.txt
 ```
 
 ## Usage
-The program can be run in 3 main ways:
-1. Running ```python main.py```without specifying any command line arguments trains a model with default arguments.
-2. Running ```python main.py -sm``` saves the trained model.
-3 ```python main.py -lm``` loads a pre-trained model and skips training
-4. ```python main.py -ld``` loads a hyperparameter dictionary and trains a model initialized with the specified hyperparams. If population encoding is selected, the gains are also loaded.
-5. ```python main.py -rt```
-6. ```python main.py -sw``` runs a hyperparameter sweep
-7. 
-| Argument  | Information |
+The program can be run in 6 main ways:
+
+| Argument  | Description |
+| ------------- | ------------- |
+| ```python main.py``` | without specifying any command line arguments trains a model with default arguments |
+| ```python main.py -sm``` | saves the trained model |
+| ```python main.py -lm``` | loads a pre-trained model and skips training |
+| ```python main.py -ld``` | loads a hyperparameter dictionary and trains a model initialized with the specified hyperparamsd |
+| ```python main.py -rt``` |  |
+| ```python main.py -sw``` | runs a hyperparameter sweep |
+
+Additionally, the following arguments can be specified to customize the training or testing
+
+| Argument  | Description |
 | ------------- | ------------- |
 | ```--output_decoding```  | Method of interpreting output spike-trains |
 | ```--input_encoding```  | Method of encoding the input data into spike-trains. |
