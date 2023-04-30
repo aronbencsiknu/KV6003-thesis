@@ -10,7 +10,7 @@ conda env create -f environment.yml
 conda activate snn_aronbencsik
 ```
 
-Alternatively, install the required libraries via pip
+Alternatively, the required libraries can be installed via pip:
 ```
 pip3 install -r requirements.txt
 ```
