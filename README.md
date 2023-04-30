@@ -9,7 +9,7 @@ This is the practical work for my undergraduate thesis at Northumbria University
 </details>
 
 
-## Installation
+## Setup
 
 Create conda environment:
 ```
