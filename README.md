@@ -32,3 +32,7 @@ Additionally, the following command line arguments can be used to customize the 
 - ```--window_overlap``` Overlap of the sliding window
 - ```--manipulation_length``` Lenght of the injected artificial manipulations
 - ```--subset_indeces``` Select which features to use
+
+## Examples
+
+...
