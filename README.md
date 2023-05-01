@@ -30,8 +30,8 @@ The program can be run in 6 main ways:
 | ```python main.py``` | without specifying any command line arguments trains a model with default arguments |
 | ```python main.py -sm``` | saves the trained model |
 | ```python main.py -lm``` | loads a pre-trained model and skips training |
-| ```python main.py -ld``` | loads a hyperparameter dictionary and trains a model initialized with the specified hyperparamsd |
-| ```python main.py -rt``` |  |
+| ```python main.py -ld``` | loads a hyperparameter dictionary and trains a model initialized with the specified hyperparams |
+| ```python main.py -rt``` | Run a real-time inference with the the membrane potentials and synaptic currents persisted over windows |
 | ```python main.py -sw``` | runs a hyperparameter sweep |
 
 Additionally, the following arguments can be specified to customize the training or testing:
