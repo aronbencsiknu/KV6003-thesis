@@ -65,3 +65,8 @@ Train a new feedforward SNN model with the temporal population encoding. Save th
 ```
 python main.py --input_encoding population --num_epochs 500 -ld -sr -sm
 ```
+
+Run a real-time inference with the membrane potential persisted over windows.
+```
+python main.py --input_encoding population -ld -lm -rt
+```
