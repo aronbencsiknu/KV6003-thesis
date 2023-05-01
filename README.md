@@ -1,4 +1,4 @@
-# Detecting Stock Market Manipulation using Deep Spiking Neural Networks
+# Detecting Stock Market Manipulation Usu
 
 This is the practical work for my undergraduate thesis at Northumbria University, Newcastle.
 <details>
