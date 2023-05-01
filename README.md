@@ -60,3 +60,8 @@ Run the feedforward SNN with the temporal population encoding. A pre-trained mod
 ```
 python main.py --input_encoding population -ld -lm
 ```
+
+Train a new feedforward SNN model with the temporal population encoding. Save the classification metrics and the trained model.
+```
+python main.py --input_encoding population --num_epochs 500 -ld -sr -sm
+```
