@@ -53,6 +53,7 @@ Additionally, the following arguments can be specified to customize the training
 | ```--window_overlap``` | Overlap of the sliding window |
 | ```--manipulation_length``` | Lenght of the injected artificial manipulations |
 | ```--subset_indeces``` | Select which features to use |
+| ```--plot_tuning_curves``` | Plot neuronal tuning curves for ensembles |
 
 ## Examples
 
@@ -68,5 +69,5 @@ python main.py --input_encoding population --num_epochs 500 -ld -sr -sm
 
 Run a real-time inference with the membrane potential persisted over windows.
 ```
-python main.py --input_encoding population -lm -rt
+python main.py --input_encoding population -lm -rt -pe
 ```
