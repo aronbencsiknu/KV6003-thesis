@@ -16,7 +16,7 @@ class Metrics():
 
         self.spiking = True if self.net_type=="CSNN" or self.net_type=="SNN" or net_type == "OC_SCNN" else False
         
-        if self.oneclass:
+        if self.oneclass or self.train_set is None:
             class_weights = None
         else:
             class_weights = train_set.get_class_weights().to(device)

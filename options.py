@@ -28,7 +28,7 @@ class Options(object):
         self.argparser.add_argument("--num_epochs", type=int, default=100, help="Number of epochs to train for")
         self.argparser.add_argument("--batch_size", type=int, default=64, help="Batch size")
         self.argparser.add_argument("--num_steps", type=int, default=100, help="Number of time steps to simulate")
-        self.argparser.add_argument("--learning_rate", type=float, default=0.001, help="Learning rate")
+        self.argparser.add_argument("--learning_rate", type=float, default=0.0005, help="Learning rate")
         self.argparser.add_argument("--hidden_size", nargs='+',default=[128, 128], help='Hidden layer size')
         self.argparser.add_argument("--neuron_type", type=str, default="Leaky", choices=["Leaky","Synaptic"], help="Type of neuron to use (Leaky, Synaptic)")
         self.argparser.add_argument("--window_length", type=int, default=10, help="Length of the window to use for the dataset")
@@ -69,7 +69,12 @@ class Options(object):
             self.opt.set_type = "non-spiking"
 
         # Set the run name for saving models, plots, etc.
-        self.opt.run_name = self.opt.net_type + "_" + self.opt.input_encoding + "-to-" + self.opt.output_decoding + "_" + self.opt.neuron_type + "_price30-volume4"
+        if self.opt.set_type == "spiking":
+            self.opt.run_name = self.opt.net_type + "_" + self.opt.input_encoding + "-to-" + self.opt.output_decoding + "_" + self.opt.neuron_type + "_price16-volume4"
+
+        else:
+            self.opt.run_name = self.opt.net_type + "_" + "_price16-volume4"
+            
         self.opt.device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         
         return self.opt

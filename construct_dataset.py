@@ -299,7 +299,7 @@ class CustomDataset(Dataset):
         return torch.tensor(w, dtype=torch.float32)
 
 
-def prepare_data(data, inject, window_length, window_overlap, manipulation_length, subset_indeces, injection_epsilon=0.055, plot_manipulated_data=False):
+def prepare_data(data, inject, window_length, window_overlap, manipulation_length, subset_indeces, injection_epsilon, plot_manipulated_data=False):
     if inject:
         manipulated_data = ManipulatedDataset(data, manipulation_length, injection_epsilon)
         if plot_manipulated_data:

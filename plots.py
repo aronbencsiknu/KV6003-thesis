@@ -121,10 +121,10 @@ def plot_real_time(neuron1, neuron2):
     
     neuron1_avg = []
     neuron2_avg = []
-    for i in range(20, len(neuron1)+20, 40):
-        for j in range(40):
-            neuron1_avg.append(np.mean(neuron1[i-20:i+20]))
-            neuron2_avg.append(np.mean(neuron2[i-20:i+20]))
+    for i in range(100, len(neuron1)+100, 100):
+        for j in range(100):
+            neuron1_avg.append(np.mean(neuron1[i-50:i+50]))
+            neuron2_avg.append(np.mean(neuron2[i-50:i+50]))
 
     plt.plot(neuron1_avg, label="neuron 1")
     plt.plot(neuron2_avg, label="neuron 2")

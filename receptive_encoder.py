@@ -172,10 +172,12 @@ class CUBALayer():
         for i in range(self.feature_dimensionality):
             if predefined_gains is not None:
                 gains = predefined_gains[i]
+                mean = None
 
             else:
                 gains = None
-            self.populations.append(CUBAPopulation(population_size, tau, g, Vth, dt, T, intercept_low=0.0, intercept_high=means[i], predefined_gains=gains))
+                mean = means[i]
+            self.populations.append(CUBAPopulation(population_size, tau, g, Vth, dt, T, intercept_low=0.0, intercept_high=mean, predefined_gains=gains))
             
 
     def forward(self, Iext, index=None):
