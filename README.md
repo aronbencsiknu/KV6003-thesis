@@ -57,9 +57,9 @@ Additionally, the following arguments can be specified to customize the training
 
 ## Examples
 
-Run the feedforward SNN with the temporal population encoding. A pre-trained model is loaded, along with the optimal hyperparameter dictionary and the pre-trained encoder. The confusion matrices, spike raster plots and performance metrics are displayed.
+Run the feedforward SNN with the temporal population encoding. A pre-trained model is loaded, along with the optimal hyperparameter dictionary and the pre-trained encoder. The confusion matrices, spike raster plots and performance metrics are displayed. The pre-trained neuronal tuning curves are displayed before inference.
 ```
-python main.py --input_encoding population -lm
+python main.py --input_encoding population -lm -pe
 ```
 
 Train a new feedforward SNN model with the temporal population encoding. Save the classification metrics and the trained model.
@@ -69,5 +69,5 @@ python main.py --input_encoding population --num_epochs 500 -ld -sr -sm
 
 Run a real-time inference with the membrane potential persisted over windows.
 ```
-python main.py --input_encoding population -lm -rt -pe
+python main.py --input_encoding population -lm -rt
 ```
