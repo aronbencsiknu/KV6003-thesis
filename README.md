@@ -1,13 +1,14 @@
 # Detecting Stock Market Manipulation Usu
 
-This is the practical work for my undergraduate thesis at Northumbria University, Newcastle.
+## Summary
+
+The practical work for my undergraduate thesis (KV6003) at Northumbria University, Newcastle.
 <details>
   <summary>Read more</summary>
 
-  The behaviour of Spiking Neural Networks (SNNs) is inspired by biological brains, where information is represented by a series of action potentials. This contrasts with  conventional artificial neural networks (ANNs), which use vectors as inputs, and model the neuron soma behaviour using a non-linear activation function. On neuromorphic hardware, SNNs promise to be significantly more energy efficient than current ANNs, while being particularly suited for signal processing applications. During trade-based stock market manipulation, malicious actors use legitimate trades to influence a stock price for personal gains. This form of manipulation is illegal. However, since it is conducted through legitimate instruments, detecting it is difficult. In this work, SNNs are applied to the detection of trade-based manipulation patterns in stock market data. Several spiking and non-spiking architectures are implemented and their performances are compared. Furthermore, multiple spike encoding techniques are tested, including a temporal population encoding method, which fully leverages the complex spatiotemporal properties of SNNs. The findings suggest that SNNs are able to achieve state-of-the-art performance in this task. Moreover, it is shown that SNNs are capable of effectively learning temporally encoded spike trains, along with commonly used rate-coded ones.
+  The behaviour of Spiking Neural Networks (SNNs) is inspired by biological brains, where information is represented by momentary pulses of energy. This contrasts with conventional Artificial Neural Networks (ANNs), which represent data as vectors, and model the neuron soma behaviour using a non-linear activation function. The human brain achieves its remarkable computational capabilities using approximately the same amount of electricity as a compact fluorescent lightbulb. On neuromorphic hardware, SNNs also promise to be significantly more energy efficient than current ANNs, while also being particularly suited for signal processing applications. In this work, SNNs were applied to the detection of trade-based manipulation patterns in stock market data. During trade-based stock market manipulation, malicious actors use legitimate trades with an intent to influence the price of a stock for personal gains. This form of manipulation is illegal. However, since it is being conducted through legitimate instruments, detecting it is difficult. Several spiking and non-spiking architectures are implemented and their performances are evaluated on this task. Furthermore, multiple spike encoding techniques were tested, including a temporal population encoding method, which fully leverages the complex spatiotemporal properties of biologically inspired neurons. The findings suggest that biologically plausible neural networks are able to achieve state-of-the-art performance in this task. Moreover, it is shown that SNNs are capable of effectively learning temporally encoded spike trains, along with commonly used rate-coded ones.
 
 </details>
-
 
 ## Setup
 
@@ -23,6 +24,7 @@ pip3 install -r requirements.txt
 ```
 
 ## Usage
+
 The program can be run in 6 main ways:
 
 | Argument  | Description |
