@@ -1,4 +1,4 @@
-# Detecting Stock Market Manipulation Usu
+# Detecting Stock Market Manipulation Using Biologically Plausible Deep Neural Networks
 
 ## Summary
 
