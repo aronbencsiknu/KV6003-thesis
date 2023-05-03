@@ -27,12 +27,12 @@ The program can be run in 6 main ways:
 
 | Argument  | Description |
 | ------------- | ------------- |
-| ```python main.py``` | without specifying any command line arguments trains a model with default arguments |
-| ```python main.py -sm``` | saves the trained model |
-| ```python main.py -lm``` | loads a pre-trained model and skips training |
-| ```python main.py -ld``` | loads a hyperparameter dictionary and trains a model initialized with the specified hyperparams |
+| ```python main.py``` | Without specifying any command line arguments trains a model with default arguments |
+| ```python main.py -sm``` | Run a training and save the model with the lowest loss |
+| ```python main.py -lm``` | Load a pre-trained model and skips training |
+| ```python main.py -ld``` | Load a hyperparameter dictionary and trains a model initialized with the specified hyperparams |
 | ```python main.py -rt``` | Run an inference with neuron states persisted over windows |
-| ```python main.py -sw``` | runs a hyperparameter sweep |
+| ```python main.py -sw``` | Run a hyperparameter sweep |
 
 Additionally, the following arguments can be specified to customize the training or testing:
 
