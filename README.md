@@ -23,6 +23,33 @@ Alternatively, the required libraries can be installed via pip:
 pip3 install -r requirements.txt
 ```
 
+## Examples
+
+### Load a pre-trained model and run testing
+With temporal population encoding:
+```
+python main.py --input_encoding population -lm -pe
+```
+Rate encoding:
+```
+python main.py --input_encoding rate -lm
+```
+And latency encoding:
+```
+python main.py --input_encoding latency -lm -pe
+```
+### Train a new model
+Train a new feedforward SNN model with the temporal population encoding. Save the classification metrics and the trained model.
+```
+python main.py --input_encoding population --num_epochs 500 -ld -sr -sm
+```
+
+### Run a real-time inference
+Run a real-time inference with the membrane potential persisted over windows.
+```
+python main.py --input_encoding population -lm -rt
+```
+
 ## Usage
 
 The program can be run in 6 main ways:
@@ -56,30 +83,3 @@ Additionally, the following arguments can be specified to customize the training
 | ```--manipulation_length``` | Lenght of the injected artificial manipulations |
 | ```--subset_indeces``` | Select which features to use |
 | ```--plot_tuning_curves``` | Plot neuronal tuning curves for ensembles |
-
-## Examples
-
-### Load a pre-trained model and run testing
-With temporal population encoding:
-```
-python main.py --input_encoding population -lm -pe
-```
-Rate encoding:
-```
-python main.py --input_encoding rate -lm
-```
-And latency encoding:
-```
-python main.py --input_encoding latency -lm -pe
-```
-### Train a new model
-Train a new feedforward SNN model with the temporal population encoding. Save the classification metrics and the trained model.
-```
-python main.py --input_encoding population --num_epochs 500 -ld -sr -sm
-```
-
-### Run a real-time inference
-Run a real-time inference with the membrane potential persisted over windows.
-```
-python main.py --input_encoding population -lm -rt
-```
