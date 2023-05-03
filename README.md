@@ -59,9 +59,18 @@ Additionally, the following arguments can be specified to customize the training
 
 ## Examples
 
-Run the feedforward SNN with the temporal population encoding. A pre-trained model is loaded, along with the optimal hyperparameter dictionary and the pre-trained encoder. The confusion matrices, spike raster plots and performance metrics are displayed. The pre-trained neuronal tuning curves are displayed before inference.
+### Load a pre-trained model and run testing:
+With temporal population encoding:
 ```
 python main.py --input_encoding population -lm -pe
+```
+Rate encoding:
+```
+python main.py --input_encoding rate -lm
+```
+And latency encoding:
+```
+python main.py --input_encoding latency -lm -pe
 ```
 
 Train a new feedforward SNN model with the temporal population encoding. Save the classification metrics and the trained model.
