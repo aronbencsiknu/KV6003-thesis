@@ -59,7 +59,7 @@ Additionally, the following arguments can be specified to customize the training
 
 ## Examples
 
-### Load a pre-trained model and run testing:
+### Load a pre-trained model and run testing
 With temporal population encoding:
 ```
 python main.py --input_encoding population -lm -pe
@@ -72,12 +72,13 @@ And latency encoding:
 ```
 python main.py --input_encoding latency -lm -pe
 ```
-
+### Train a new model
 Train a new feedforward SNN model with the temporal population encoding. Save the classification metrics and the trained model.
 ```
 python main.py --input_encoding population --num_epochs 500 -ld -sr -sm
 ```
 
+### Run a real-time inference
 Run a real-time inference with the membrane potential persisted over windows.
 ```
 python main.py --input_encoding population -lm -rt
