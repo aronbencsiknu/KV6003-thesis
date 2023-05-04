@@ -18,16 +18,15 @@ pip3 install -r requirements.txt
 ## Examples
 
 ### Load a pre-trained model and run testing
-With temporal population encoding:
+With temporal population encoding. Include the ```-pe``` flag to display the neuronal tuning curves.
 ```
 python main.py --input_encoding population -lm
 ```
-Include the ```-pe``` flag to display the neuronal tuning curves.
-Rate encoding:
+With rate coding.
 ```
 python main.py --input_encoding rate -lm
 ```
-And latency encoding:
+And latency encoding.
 ```
 python main.py --input_encoding latency -lm
 ```
