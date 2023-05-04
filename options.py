@@ -36,6 +36,9 @@ class Options(object):
         self.argparser.add_argument("--train_method", type=str, default="multiclass", choices=["multiclass", "oneclass"], help="Method to use for training (multiclass, oneclass)")
         self.argparser.add_argument("--manipulation_length", type=int, default=3, help="Length of the injected manipulations")
         self.argparser.add_argument("--subset_indeces", nargs='+',default=[4,6], help='Select which features to use')
+        self.argparser.add_argument("-pe", "--plot_tuning_curves", action='store_true', help="Plot neuronal tuning curves for ensembles")
+
+        # ----------------------------
 
         self.initialized = True
 
@@ -67,6 +70,9 @@ class Options(object):
         elif self.opt.net_type == "CNN" or self.opt.net_type == "RNN":
             self.opt.flatten_data = False
             self.opt.set_type = "non-spiking"
+
+        if self.opt.real_time or self.opt.sweep or self.opt.load_model or self.opt.load_model_dict:
+            self.opt.net_type = "SNN"
 
         # Set the run name for saving models, plots, etc.
         if self.opt.set_type == "spiking":

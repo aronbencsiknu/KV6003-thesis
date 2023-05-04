@@ -3,7 +3,15 @@ import pathlib
 import numpy as np
 
 class LobsterData:
+    """
+    Class for loading LOBSTER data
+    """
     def __init__(self, path, limit=None):
+        """
+        Args:
+            path (str): path to the data folder
+            limit (int): limit the number of data to load
+        """
         
         self.path = pathlib.Path(pathlib.Path.cwd() / "data" / path)
 
@@ -23,7 +31,7 @@ class LobsterData:
             count = 0
             for row in reader:
                 if limit is not None:
-                    if count < limit:
+                    if count < limit: # stop at limit
                         self.orderbook_data.append(row)
                 else:
                     self.orderbook_data.append(row)

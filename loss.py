@@ -14,6 +14,9 @@ class LossFunctions:
         return num_steps, num_outputs
 
 class mse_count_loss(LossFunctions):
+    """
+    MSE spike count loss fromm snnTorch with class weights
+    """
     def __init__(
         self,
         correct_rate=1,
@@ -40,8 +43,10 @@ class mse_count_loss(LossFunctions):
             off_target=off_target,
         )
 
-        spike_count = torch.sum(spk_out, 0)  # B x C
+        spike_count = torch.sum(spk_out, 0)
         if self.class_weights is not None:
+            
+            # pytorch MSE is replaced with custom MSE to allow for class weights
             loss = torch.mean(torch.square(spike_count_target - spike_count) * self.class_weights)
         else:
             loss = torch.mean(torch.square(spike_count_target - spike_count))

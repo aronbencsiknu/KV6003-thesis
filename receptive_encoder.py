@@ -1,15 +1,19 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from snntorch import spikeplot
 from torch import nn
-import torch
-import random
 import math
-from matplotlib.ticker import MaxNLocator
 from progress.bar import ShadyBar
 
 class CUBANeuron(nn.Module):
     def __init__(self, tau, g, Vth, dt, T):
+        """
+        :param tau: membrane time constant
+        :param g: gain
+        :param Vth: threshold voltage
+        :param dt: time step
+        :param T: simulation time
+        """
+
         super(CUBANeuron, self).__init__()
         self.tau = tau
         self.g = g
@@ -61,6 +65,18 @@ class CUBANeuron(nn.Module):
 
 class CUBAPopulation():
     def __init__(self, population_size, tau=0.1, g=-5.0, Vth=1, dt=0.001, T=0.1, intercept_low=0.0, intercept_high=0.1, predefined_gains=None):
+        """
+        :param population_size: number of neurons in the population
+        :param tau: membrane time constant
+        :param g: gain
+        :param Vth: threshold voltage
+        :param dt: time step
+        :param T: simulation time
+        :param intercept_low: lower bound of the intercepts
+        :param intercept_high: upper bound of the intercepts
+        :param predefined_gains: if not None, the gains are set to the values in this list
+
+        """
 
         self.population_size = population_size
         self.tau = tau
@@ -156,7 +172,20 @@ class CUBAPopulation():
 
 
 class CUBALayer():
-    def __init__(self, feature_dimensionality, population_size, means, tau=0.8, g=-5.0, Vth=1, dt=0.01, T=0.1, predefined_gains=None):
+    def __init__(self, feature_dimensionality, population_size, means, tau=0.8, g=-5.0, Vth=1, dt=0.01, T=0.1, predefined_gains=None, plot_tuning_curves=False):
+        """
+        :param feature_dimensionality: number of populations
+        :param population_size: number of neurons in each population
+        :param means: means of input data for tuning neurons
+        :param tau: membrane time constant
+        :param g: gain
+        :param Vth: threshold voltage
+        :param dt: time step
+        :param T: simulation time
+        :param predefined_gains: if not None, use these gains instead of tuning neurons
+        :param plot_tuning_curves: if True, plot tuning curves
+
+        """
 
         self.feature_dimensionality = feature_dimensionality # number of populations
         self.population_size = population_size # number of neurons in each population
@@ -167,7 +196,6 @@ class CUBALayer():
         self.T = T
 
         self.populations = []
-
         
         for i in range(self.feature_dimensionality):
             if predefined_gains is not None:
@@ -179,6 +207,8 @@ class CUBALayer():
                 mean = means[i]
             self.populations.append(CUBAPopulation(population_size, tau, g, Vth, dt, T, intercept_low=0.0, intercept_high=mean, predefined_gains=gains))
             
+        if plot_tuning_curves:
+            self.plot_tuning_curves()
 
     def forward(self, Iext, index=None):
 

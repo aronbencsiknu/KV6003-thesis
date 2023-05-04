@@ -11,6 +11,12 @@ import plots
 
 class ManipulatedDataset:
     def __init__(self, original_data, manipulation_length, epsilon = 0.055):
+        """
+        :param original_data: list of 4 arrays: ask_price, ask_volume, bid_price, bid_volume
+        :param manipulation_length: length of manipulation in seconds
+        :param epsilon: probability of manipulation
+
+        """
 
         # manipulation characteristics
         self.m_len = manipulation_length
@@ -61,6 +67,12 @@ class ManipulatedDataset:
         self.data = [a_p, a_v, b_p, b_v]
 
     def generate_manipulated_bid_ask_price(self, P0, m_len):
+        """
+        Generates manipulated bid/ask price
+
+        :param P0: initial price
+        :param m_len: manipulation length
+        """
 
         pump_len = int(m_len/3)
         dump_len = m_len - pump_len
@@ -70,6 +82,13 @@ class ManipulatedDataset:
         return np.concatenate((pumping_array, dumping_array))
 
     def generate_manipulated_bid_ask_volume(self,V0, m_len):
+        """
+        Generates manipulated bid/ask volume
+
+        :param V0: initial volume
+        :param m_len: manipulation length
+        """
+
         pump_len = int(m_len/3)
         dump_len = m_len - pump_len
 
@@ -79,6 +98,15 @@ class ManipulatedDataset:
         return np.concatenate((pumping_array, dumping_array))
 
     def generate_manipulated_instance(self, ask_P0, ask_V0, bid_P0, bid_V0, m_len):
+        """
+        Generates manipulated orderbook data instance
+
+        :param ask_P0: initial ask price
+        :param ask_V0: initial ask volume
+        :param bid_P0: initial bid price
+        :param bid_V0: initial bid volume
+        :param m_len: manipulation length
+        """
 
         manipulated_bid_price = self.generate_manipulated_bid_ask_price(bid_P0, m_len)
         manipulated_ask_price = self.generate_manipulated_bid_ask_price(ask_P0, m_len)
@@ -91,6 +119,12 @@ class ManipulatedDataset:
 
 class ExtractFeatures:
     def __init__(self, data):
+        """
+        Extracts features from the original data
+
+        :param data: original data
+        """
+
         self.original_data = copy.deepcopy(data)
         self.original_ask_price = self.original_data[0]
         self.original_ask_volume = self.original_data[1]
@@ -141,6 +175,12 @@ class ExtractFeatures:
                 self.features[i][j] = (self.features[i][j] - min) / (max - min)
 
     def extract_high_frequencies(self, data):
+        """
+        Extracts high frequencies from the time-series data using DWT
+
+        :param data: time-series data
+        """
+
         # Apply DWT transform to the time-series data
         cA, cD = pywt.dwt(data, 'db2')
         before_len = len(data)
@@ -161,6 +201,11 @@ class ExtractFeatures:
         return data
 
     def take_derivative(self, data):
+        """
+        Takes the central difference approximate derivative of the time-series data
+
+        :param data: time-series data
+        """
 
         gradients = []
         for i in range(len(data)-1):
@@ -172,6 +217,17 @@ class ExtractFeatures:
 
 class LabelledWindows:
     def __init__(self, data, window_size, window_overlap, manipulation_indices, manipulated_data, manipulation_length):
+        """
+        Slices the data into windows of size window_size and labels them as manipulated or not manipulated
+        :param data: the data to be sliced
+        :param window_size: the size of the windows
+        :param window_overlap: the overlap between the windows
+        :param manipulation_indices: the indices of the data that are manipulated
+        :param manipulated_data: whether the data is manipulated or not
+        :param manipulation_length: the length of the manipulation
+
+        """
+
         self.manipulation_indices = manipulation_indices
         self.overlap = window_overlap
         self.windows = self.slice_data_to_windows(data, window_size, self.overlap)
@@ -198,10 +254,9 @@ class LabelledWindows:
     def slice_data_to_windows(self, data, window_size, overlap=0):
         """
         Slices the data into windows of size window_size
-        
-        Parameters:
-            data (np.array): The data to be sliced
-            window_size (int): The size of the window
+        :param data: the data to be sliced
+        :param window_size: the size of the windows
+        :param overlap: the overlap between the windows
         
         """
         
@@ -221,6 +276,21 @@ class LabelledWindows:
     
 class CustomDataset(Dataset):
     def __init__(self, data, targets, num_steps, window_length, encoding="rate", flatten=True, set_type="spiking", pop_encoder=None, num_classes=2):
+        """
+        Custom dataset class for the spiking neural network.
+        
+        :param data: the data to be encoded
+        :param targets: the labels of the data
+        :param num_steps: the number of steps in the simulation
+        :param window_length: the length of the window
+        :param encoding: the encoding method to be used
+        :param flatten: whether to flatten the data or not
+        :param set_type: the type of the set (spiking or non-spiking)
+        :param pop_encoder: the population encoder to be used
+        :param num_classes: the number of classes in the dataset
+
+        """
+
         self.data=data.copy()
         self.targets=targets.copy()
         self.db=[]
@@ -300,6 +370,18 @@ class CustomDataset(Dataset):
 
 
 def prepare_data(data, inject, window_length, window_overlap, manipulation_length, subset_indeces, injection_epsilon, plot_manipulated_data=False):
+    """
+    args:
+        data (np.array): The data to be prepared
+        inject (bool): Whether to inject a manipulation into the data
+        window_length (int): The length of the windows
+        window_overlap (float): The overlap between the windows
+        manipulation_length (int): The length of the manipulation to be injected
+        subset_indeces (list): The indeces of the features to be used
+        injection_epsilon (float): Manipulation frequency
+        plot_manipulated_data (bool): Whether to plot the manipulated data
+    """
+
     if inject:
         manipulated_data = ManipulatedDataset(data, manipulation_length, injection_epsilon)
         if plot_manipulated_data:

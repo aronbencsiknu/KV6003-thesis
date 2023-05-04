@@ -3,7 +3,7 @@ from data import LobsterData
 import construct_dataset
 from construct_dataset import CustomDataset
 from receptive_encoder import CUBALayer
-from model import SNN, CSNN, CNN, OC_SCNN, RNN
+from models import SNN, CSNN, CNN, OC_SCNN, RNN
 from options import Options
 import plots
 from metrics import Metrics
@@ -92,11 +92,11 @@ if opt.input_encoding == "population":
   else:
     gains = None
 
-  receptive_encoder = CUBALayer(feature_dimensionality=feature_dimensionality, population_size=10, means=means, predefined_gains=gains)
+  receptive_encoder = CUBALayer(feature_dimensionality=feature_dimensionality, population_size=10, means=means, predefined_gains=gains, plot_tuning_curves=opt.plot_tuning_curves)
   opt.num_steps = int(receptive_encoder.T/receptive_encoder.dt) * opt.window_length # override num_steps
 
   # save gains
-  if opt.save_model and not opt.load_model:
+  if opt.save_model or opt.sweep and not opt.load_model:
     gains = []
     for population in receptive_encoder.populations:
       gains.append(population.gains)
@@ -105,21 +105,20 @@ if opt.input_encoding == "population":
     path = pathlib.Path(pathlib.Path.cwd() / "trained_models" / opt.input_encoding / gains_name)
     np.save(path, gains)
 
-  receptive_encoder.display_tuning_curves() # plot tuning curves
-
 else:
   receptive_encoder = None
 
 # create datasets and dataloaders
+test_set = CustomDataset(data=X_test, targets=y_test, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type, pop_encoder=receptive_encoder)
+test_loader = DataLoader(test_set, batch_size=opt.batch_size, shuffle=True)
+
+# skip train and val set generation if loading model
 if not opt.load_model:
   train_set = CustomDataset(data=X_train, targets=y_train, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type, pop_encoder=receptive_encoder)
   train_loader = DataLoader(train_set, batch_size=opt.batch_size, shuffle=True)
 
-test_set = CustomDataset(data=X_test, targets=y_test, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type, pop_encoder=receptive_encoder)
-test_loader = DataLoader(test_set, batch_size=opt.batch_size, shuffle=True)
-
-val_set = CustomDataset(data=X_val, targets=y_val, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type, pop_encoder=receptive_encoder)
-val_loader = DataLoader(val_set, batch_size=opt.batch_size, shuffle=True)
+  val_set = CustomDataset(data=X_val, targets=y_val, num_steps=opt.num_steps, window_length=opt.window_length, encoding=opt.input_encoding, flatten=opt.flatten_data, set_type=opt.set_type, pop_encoder=receptive_encoder)
+  val_loader = DataLoader(val_set, batch_size=opt.batch_size, shuffle=True)
 
 # get input size (num features for non-flattened data; num of datapoints in window for flattened data)
 data, _ = next(iter(test_loader))
@@ -132,8 +131,8 @@ if not opt.load_model:
   print("Class counts in train set: ")
   print("\t- 0:", train_set.n_samples_per_class[0])
   print("\t- 1:", train_set.n_samples_per_class[1])
+  print("Validation set size:\t", len(val_set))
 
-print("Validation set size:\t", len(val_set))
 print("Test set size:\t\t", len(test_set))
 print("Class counts in test set: ")
 print("\t- 0:", test_set.n_samples_per_class[0])
@@ -193,6 +192,9 @@ else:
   early_stopping = None
 
 def train_epoch(net, train_loader,optimizer,epoch, logging_index):
+  """
+  Train the network for one epoch
+  """
 
   net.train()
   loss_val=0
@@ -227,8 +229,13 @@ def train_epoch(net, train_loader,optimizer,epoch, logging_index):
  
   return net, logging_index, loss_val
 
+
 def sweep_train(config=None):
-    
+    """
+    Hyperparameter sweep train function. 
+    Called by wandb agent.
+    """
+
     # Initialize a new wandb run
     with wandb.init(config=config):
         
@@ -280,6 +287,9 @@ def sweep_train(config=None):
       torch.save(network.state_dict(), path_model)
 
 def load_model():
+  """
+  Load model from trained_models folder
+  """
   name_model = opt.load_name + "_model.pt"
   name_dict = opt.load_name + "_dict.json"
 
@@ -297,7 +307,10 @@ def load_model():
   return model
 
 def forward_pass_eval(model,dataloader, early_stopping, logging_index, testing=False):
-
+  """
+  Forward pass evaluation function.
+  Can be used for testing or validation.
+  """
   if testing:
     print("loading best model...")
 
@@ -401,7 +414,14 @@ def forward_pass_eval(model,dataloader, early_stopping, logging_index, testing=F
 
     return logging_index, stop_early, loss, acc
 
+
 def real_time_eval(model, dataloader):
+  """
+  Simulate real time evaluation of the model
+  by persisting neuron states from one window to the next
+  """
+
+
   model = load_model()
   real_time_spk = []
   neuron1 = []
@@ -413,7 +433,6 @@ def real_time_eval(model, dataloader):
     data=data.to(opt.device)
     target=target.to(opt.device)
     max = 10000
-    
 
     if data.shape[0] == opt.batch_size:
       for i in range(opt.batch_size):

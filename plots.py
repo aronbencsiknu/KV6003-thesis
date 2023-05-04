@@ -1,5 +1,4 @@
 import torch
-import torch.nn as nn
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 from snntorch import spikeplot
@@ -13,6 +12,16 @@ plot spike trains
 #################
 """
 def plot_spike_trains(model, test_loader, num_steps, device, save_name, save=False):
+    """
+    Plots spike trains of a trained model.
+    :param model: trained model
+    :param test_loader: test loader
+    :param num_steps: number of simulation steps
+    :param device: device
+    :param save_name: name of saved plot
+    :param save: save plot
+    """
+
     with torch.no_grad():
         spk_recs = get_spike_data(model, test_loader, num_steps, device)
     fig = plt.figure(facecolor="w", figsize=(5, 15))
@@ -54,12 +63,17 @@ plot data with injected manipulations highlighted
 #################################################
 """
 def plot_manipulated_data(manipulated_data):
+    """
+    Plots LOBSTER data with manipulations highighted.
+    :param manipulated_data: manipulated
+    """
+
     fig, axs = plt.subplots(2, 1, figsize=(10, 5))
-    plot_range = [0, 600]
+    plot_range = [0, 1400]
     for y in range(2):
             for i in range(plot_range[0], plot_range[1]):
                 if i in manipulated_data.manipulation_indeces:
-                    axs[y].axvline(x = i, color = 'r', label = 'axvline - full height', linestyle='dotted', linewidth=0.5)
+                    axs[y].axvline(x = i-plot_range[0], color = 'r', label = 'axvline - full height', linestyle='dotted', linewidth=0.5)
                 axs[y].plot(manipulated_data.data[y][plot_range[0]:plot_range[1]], color='b', linewidth=1)
 
     plt.savefig("plots/manipulated-data.png")
@@ -72,6 +86,9 @@ plot manipulated window
 #######################
 """
 def plot_manipulated_window(data, targets):
+    """
+    Plots only one window containing a mnipulation.
+    """
     for i in range(len(data)):
         if targets[i] == 1:
             print("Manipulated sample:", i)
@@ -86,6 +103,13 @@ plot confusion matrix
 #####################
 """
 def plot_confusion_matrix(y_pred, y_true, save_name, save=False):
+    """
+    Plots confusion matrix and normalized confusion matrix.
+    :param y_pred: predicted labels
+    :param y_true: true labels
+    :param save_name: name of saved plot
+    :param save: save plot
+    """
 
     conf_matrix = confusion_matrix(y_true, y_pred, labels=[0,1])
     
@@ -118,6 +142,11 @@ def plot_confusion_matrix(y_pred, y_true, save_name, save=False):
     plt.show()
 
 def plot_real_time(neuron1, neuron2):
+    """
+    Plots real time eval data.
+    :param neuron1: neuron 1 spike data
+    :param neuron2: neuron 2 spike data
+    """
     
     neuron1_avg = []
     neuron2_avg = []

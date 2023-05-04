@@ -1,4 +1,8 @@
 class SweepHandler():
+    """
+    This class is used to define the sweep parameters and the metric to be used for the sweep.
+    """
+    
     def __init__(self):
 
         self.metric = {
@@ -17,7 +21,7 @@ class SweepHandler():
                 'values': [0.3, 0.4, 0.5]
             },
         'learning_rate': {
-            'values': [0.01, 0.001]
+            'values': [0.001, 0.0005, 0.0001]
         },
 
         'NeuronType': {

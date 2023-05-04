@@ -4,6 +4,21 @@ from loss import mse_count_loss
 
 class Metrics():
     def __init__(self, net_type, set_type, output_decoding, train_set, device, num_steps, oneclass=False):
+        """
+        Metrics class for evaluating the performance of a network.
+
+        Computes metrics and runs forward pass according to network architecture and 
+        spike encoding/decoding.
+
+        :param net_type: Type of network to use (SNN, CSNN, CNN, OC_SCNN, RNN)
+        :param set_type: Type of dataset to use (spiking, non-spiking)
+        :param output_decoding: Type of output decoding to use (rate, latency)
+        :param train_set: Training dataset
+        :param device: Device to run the network on (CPU, CUDA)
+        :param num_steps: Number of simulation steps
+        :param oneclass: Whether the network is a one-class classifier
+        """
+        
         self.net_type = net_type
         self.set_type = set_type
         self.output_decoding = output_decoding
