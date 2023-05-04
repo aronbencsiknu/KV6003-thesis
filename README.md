@@ -1,7 +1,5 @@
 # Detecting Stock Market Manipulation Using Biologically Plausible Deep Neural Networks
 
-## Summary
-
 The practical work for my undergraduate thesis (KV6003) at Northumbria University, Newcastle.
 
 ## Setup
