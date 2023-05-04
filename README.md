@@ -1,13 +1,14 @@
-# Detecting Stock Market Manipulation Usu
+# Detecting Stock Market Manipulation Using Biologically Plausible Deep Neural Networks
 
-This is the practical work for my undergraduate thesis at Northumbria University, Newcastle.
+## Summary
+
+The practical work for my undergraduate thesis (KV6003) at Northumbria University, Newcastle.
 <details>
   <summary>Read more</summary>
 
-  The behaviour of Spiking Neural Networks (SNNs) is inspired by biological brains, where information is represented by a series of action potentials. This contrasts with  conventional artificial neural networks (ANNs), which use vectors as inputs, and model the neuron soma behaviour using a non-linear activation function. On neuromorphic hardware, SNNs promise to be significantly more energy efficient than current ANNs, while being particularly suited for signal processing applications. During trade-based stock market manipulation, malicious actors use legitimate trades to influence a stock price for personal gains. This form of manipulation is illegal. However, since it is conducted through legitimate instruments, detecting it is difficult. In this work, SNNs are applied to the detection of trade-based manipulation patterns in stock market data. Several spiking and non-spiking architectures are implemented and their performances are compared. Furthermore, multiple spike encoding techniques are tested, including a temporal population encoding method, which fully leverages the complex spatiotemporal properties of SNNs. The findings suggest that SNNs are able to achieve state-of-the-art performance in this task. Moreover, it is shown that SNNs are capable of effectively learning temporally encoded spike trains, along with commonly used rate-coded ones.
+  The behaviour of Spiking Neural Networks (SNNs) is inspired by biological brains, where information is represented by momentary pulses of energy. This contrasts with conventional Artificial Neural Networks (ANNs), which represent data as vectors, and model the neuron soma behaviour using a non-linear activation function. The human brain achieves its remarkable computational capabilities using approximately the same amount of electricity as a compact fluorescent lightbulb. On neuromorphic hardware, SNNs also promise to be significantly more energy efficient than current ANNs, while also being particularly suited for signal processing applications. In this work, SNNs were applied to the detection of trade-based manipulation patterns in stock market data. During trade-based stock market manipulation, malicious actors use legitimate trades with an intent to influence the price of a stock for personal gains. This form of manipulation is illegal. However, since it is being conducted through legitimate instruments, detecting it is difficult. Several spiking and non-spiking architectures are implemented and their performances are evaluated on this task. Furthermore, multiple spike encoding techniques were tested, including a temporal population encoding method, which fully leverages the complex spatiotemporal properties of biologically inspired neurons. The findings suggest that biologically plausible neural networks are able to achieve state-of-the-art performance in this task. Moreover, it is shown that SNNs are capable of effectively learning temporally encoded spike trains, along with commonly used rate-coded ones.
 
 </details>
-
 
 ## Setup
 
@@ -22,17 +23,45 @@ Alternatively, the required libraries can be installed via pip:
 pip3 install -r requirements.txt
 ```
 
+## Examples
+
+### Load a pre-trained model and run testing
+With temporal population encoding:
+```
+python main.py --input_encoding population -lm -pe
+```
+Rate encoding:
+```
+python main.py --input_encoding rate -lm
+```
+And latency encoding:
+```
+python main.py --input_encoding latency -lm -pe
+```
+### Train a new model
+Train a new feedforward SNN model with the temporal population encoding. Save the classification metrics and the trained model.
+```
+python main.py --input_encoding population --num_epochs 500 -ld -sr -sm
+```
+
+### Run a real-time inference
+Run a real-time inference with the membrane potential persisted over windows.
+```
+python main.py --input_encoding population -lm -rt
+```
+
 ## Usage
+
 The program can be run in 6 main ways:
 
 | Argument  | Description |
 | ------------- | ------------- |
-| ```python main.py``` | without specifying any command line arguments trains a model with default arguments |
-| ```python main.py -sm``` | saves the trained model |
-| ```python main.py -lm``` | loads a pre-trained model and skips training |
-| ```python main.py -ld``` | loads a hyperparameter dictionary and trains a model initialized with the specified hyperparams |
+| ```python main.py``` | Without specifying any command line arguments trains a model with default arguments |
+| ```python main.py -sm``` | Run a training and save the model with the lowest loss |
+| ```python main.py -lm``` | Load a pre-trained model and skips training |
+| ```python main.py -ld``` | Load a hyperparameter dictionary and trains a model initialized with the specified hyperparams |
 | ```python main.py -rt``` | Run an inference with neuron states persisted over windows |
-| ```python main.py -sw``` | runs a hyperparameter sweep |
+| ```python main.py -sw``` | Run a hyperparameter sweep |
 
 Additionally, the following arguments can be specified to customize the training or testing:
 
@@ -53,20 +82,4 @@ Additionally, the following arguments can be specified to customize the training
 | ```--window_overlap``` | Overlap of the sliding window |
 | ```--manipulation_length``` | Lenght of the injected artificial manipulations |
 | ```--subset_indeces``` | Select which features to use |
-
-## Examples
-
-Run the feedforward SNN with the temporal population encoding. A pre-trained model is loaded, along with the optimal hyperparameter dictionary and the pre-trained encoder. The confusion matrices, spike raster plots and performance metrics are displayed.
-```
-python main.py --input_encoding population -lm
-```
-
-Train a new feedforward SNN model with the temporal population encoding. Save the classification metrics and the trained model.
-```
-python main.py --input_encoding population --num_epochs 500 -ld -sr -sm
-```
-
-Run a real-time inference with the membrane potential persisted over windows.
-```
-python main.py --input_encoding population -lm -rt
-```
+| ```--plot_tuning_curves``` | Plot neuronal tuning curves for ensembles |
