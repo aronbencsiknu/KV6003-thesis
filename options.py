@@ -50,7 +50,7 @@ class Options(object):
         self.opt.hidden_size = [int(i) for i in self.opt.hidden_size]
         self.opt.subset_indeces = [int(i) for i in self.opt.subset_indeces]
 
-        self.opt.wandb_key = "edfb94e4b9dca47c397a343d2829e9af262d9e32"
+        self.opt.wandb_key = "INSERT KEY HERE"
 
         # conditionally set option values
         if self.opt.net_type == "CSNN" or self.opt.net_type == "OC_SCNN":
@@ -71,7 +71,7 @@ class Options(object):
             self.opt.flatten_data = False
             self.opt.set_type = "non-spiking"
 
-        if self.opt.real_time or self.opt.sweep or self.opt.load_model or self.opt.load_model_dict:
+        if self.opt.real_time or self.opt.sweep or self.opt.load_model or self.opt.load_model_dict or self.opt.input_encoding == "population":
             self.opt.net_type = "SNN"
 
         # Set the run name for saving models, plots, etc.

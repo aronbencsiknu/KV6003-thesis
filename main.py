@@ -123,18 +123,19 @@ if not opt.load_model:
 # get input size (num features for non-flattened data; num of datapoints in window for flattened data)
 data, _ = next(iter(test_loader))
 input_size = np.shape(data)[2]
-
+print("\n----------------------------------\n")
+print("Net type:\t\t", opt.net_type)
 # print train/test/valid set info
 if not opt.load_model:
   print("\n----------------------------------\n")
   print("Train set size:\t\t", len(train_set))
-  print("Class counts in train set: ")
+  print("\nClass counts in train set: ")
   print("\t- 0:", train_set.n_samples_per_class[0])
   print("\t- 1:", train_set.n_samples_per_class[1])
-  print("Validation set size:\t", len(val_set))
+  print("\nValidation set size:\t", len(val_set))
 
 print("Test set size:\t\t", len(test_set))
-print("Class counts in test set: ")
+print("\nClass counts in test set: ")
 print("\t- 0:", test_set.n_samples_per_class[0])
 print("\t- 1:", test_set.n_samples_per_class[1])
 print("\n----------------------------------\n")

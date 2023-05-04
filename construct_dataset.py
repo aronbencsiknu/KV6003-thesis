@@ -76,8 +76,8 @@ class ManipulatedDataset:
 
         pump_len = int(m_len/3)
         dump_len = m_len - pump_len
-        pumping_array = np.linspace(P0, P0 * (1 + self.price_increase/10000), pump_len)
-        dumping_array = np.linspace(P0 * (1 + self.price_increase/10000), P0, dump_len)
+        pumping_array = np.linspace(P0, P0 * (1 + self.price_increase/1.0e+4), pump_len)
+        dumping_array = np.linspace(P0 * (1 + self.price_increase/1.0e+4), P0, dump_len)
 
         return np.concatenate((pumping_array, dumping_array))
 
