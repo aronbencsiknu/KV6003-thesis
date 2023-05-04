@@ -36,7 +36,7 @@ python main.py --input_encoding rate -lm
 ```
 And latency encoding:
 ```
-python main.py --input_encoding latency -lm -pe
+python main.py --input_encoding latency -lm
 ```
 ### Train a new model
 Train a new feedforward SNN model with the temporal population encoding. Save the classification metrics and the trained model.
