@@ -62,7 +62,7 @@ def add_subplot(spike_data,fig,subplt_num):
 plot data with injected manipulations highlighted
 #################################################
 """
-def plot_manipulated_data(manipulated_data):
+def plot_manipulated_data(manipulated_data, save=False):
     """
     Plots LOBSTER data with manipulations highighted.
     :param manipulated_data: manipulated
@@ -76,7 +76,8 @@ def plot_manipulated_data(manipulated_data):
                     axs[y].axvline(x = i-plot_range[0], color = 'r', label = 'axvline - full height', linestyle='dotted', linewidth=0.5)
                 axs[y].plot(manipulated_data.data[y][plot_range[0]:plot_range[1]], color='b', linewidth=1)
 
-    plt.savefig("plots/manipulated-data.png")
+    if save:
+        plt.savefig("plots/manipulated-data.png")
     plt.show()
     
 
@@ -85,7 +86,7 @@ def plot_manipulated_data(manipulated_data):
 plot manipulated window
 #######################
 """
-def plot_manipulated_window(data, targets):
+def plot_manipulated_window(data, targets, save=False):
     """
     Plots only one window containing a mnipulation.
     """
@@ -94,7 +95,9 @@ def plot_manipulated_window(data, targets):
             print("Manipulated sample:", i)
             plt.plot(data[i])
             break
-    plt.savefig("plots/manipulated-window.png")
+    
+    if save:
+        plt.savefig("plots/manipulated-window.png")
     plt.show()
 
 """
