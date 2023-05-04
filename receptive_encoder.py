@@ -208,7 +208,7 @@ class CUBALayer():
             self.populations.append(CUBAPopulation(population_size, tau, g, Vth, dt, T, intercept_low=0.0, intercept_high=mean, predefined_gains=gains))
             
         if plot_tuning_curves:
-            self.plot_tuning_curves()
+            self.display_tuning_curves()
 
     def forward(self, Iext, index=None):
 
