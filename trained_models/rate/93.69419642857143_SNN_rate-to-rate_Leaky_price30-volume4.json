@@ -1,1 +1,0 @@
-{"NeuronType": "Leaky", "dropout": 0.3, "hidden_size": 512, "learn_alpha": true, "learn_beta": false, "learn_threshold": false, "learning_rate": 0.01, "num_hidden": 2, "surrogate_gradient": "sigmoid", "_wandb": {}}
