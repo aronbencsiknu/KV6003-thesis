@@ -2,7 +2,7 @@
 
 The practical work for my undergraduate thesis (KV6003) at Northumbria University, Newcastle.
 
- [Thesis Report](https://drive.google.com/file/d/1ZEcvkLQGcEgICU87VQKgOC2bJsX2Xv68/view?usp=sharing) 
+[Thesis Report](https://drive.google.com/file/d/1ZEcvkLQGcEgICU87VQKgOC2bJsX2Xv68/view?usp=sharing) 
 
 ## Setup
 
